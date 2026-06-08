@@ -1,0 +1,304 @@
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { z } from "zod";
+import { ArrowRight, FlaskConical, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
+import { createInvestigation } from "@/lib/investigationApi";
+
+const schema = z
+  .object({
+    subject_name: z.string().trim().min(1, "Name is required").max(120),
+    github_username: z.string().trim().max(60).optional().or(z.literal("")),
+    x_handle: z.string().trim().max(60).optional().or(z.literal("")),
+    linkedin_url: z.string().trim().url("Must be a URL").max(500).optional().or(z.literal("")),
+    website_url: z.string().trim().url("Must be a URL").max(500).optional().or(z.literal("")),
+    other_profile_url: z.string().trim().url("Must be a URL").max(500).optional().or(z.literal("")),
+    context: z.string().min(1, "Pick a context"),
+    notes: z.string().max(2000).optional().or(z.literal("")),
+    consent: z.literal(true, { errorMap: () => ({ message: "Required" }) }),
+  })
+  .refine(
+    (value) =>
+      value.github_username ||
+      value.x_handle ||
+      value.linkedin_url ||
+      value.website_url ||
+      value.other_profile_url,
+    { message: "Provide at least one public identifier", path: ["github_username"] },
+  );
+
+const CONTEXTS = [
+  { value: "hiring", label: "Hiring or contracting" },
+  { value: "diligence", label: "Investment diligence" },
+  { value: "journalism", label: "Journalism or research" },
+  { value: "client_vetting", label: "Client or partner vetting" },
+  { value: "personal", label: "Personal research" },
+];
+
+const emptyForm = {
+  subject_name: "",
+  github_username: "",
+  x_handle: "",
+  linkedin_url: "",
+  website_url: "",
+  other_profile_url: "",
+  context: "",
+  notes: "",
+  consent: false,
+};
+
+const demoForm = {
+  subject_name: "Maya Chen",
+  github_username: "maya-builds",
+  x_handle: "@mayachen",
+  linkedin_url: "https://www.linkedin.com",
+  website_url: "https://example.com/maya",
+  other_profile_url: "https://example.com/maya/writing",
+  context: "hiring",
+  notes: "Demo subject with a multi-year public engineering and writing footprint.",
+  consent: true,
+};
+
+const InvestigatePage = () => {
+  const navigate = useNavigate();
+  const { user, demoMode } = useAuth();
+  const { toast } = useToast();
+  const [submitting, setSubmitting] = useState(false);
+  const [form, setForm] = useState(emptyForm);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const set = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) =>
+    setForm((current) => ({ ...current, [key]: value }));
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const parsed = schema.safeParse(form);
+    if (!parsed.success) {
+      const nextErrors: Record<string, string> = {};
+      parsed.error.issues.forEach((issue) => {
+        nextErrors[String(issue.path[0])] = issue.message;
+      });
+      setErrors(nextErrors);
+      return;
+    }
+
+    setSubmitting(true);
+    setErrors({});
+    try {
+      const record = await createInvestigation(
+        {
+          subject_name: parsed.data.subject_name,
+          github_username: parsed.data.github_username,
+          x_handle: parsed.data.x_handle,
+          linkedin_url: parsed.data.linkedin_url,
+          website_url: parsed.data.website_url,
+          other_profile_url: parsed.data.other_profile_url,
+          context: parsed.data.context,
+          notes: parsed.data.notes,
+        },
+        user?.id,
+      );
+      if (!record) throw new Error("Investigation was not created.");
+      navigate(`/investigation/${record.id}`);
+    } catch (error) {
+      toast({
+        title: "Could not start investigation",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="mx-auto max-w-3xl py-10 md:py-14">
+      <header className="mb-10 grid gap-4 border-b border-border pb-8 md:grid-cols-[1fr_auto] md:items-end">
+        <div>
+          <p className="text-xs uppercase tracking-[0.2em] text-primary">New investigation</p>
+          <h1 className="mt-2 text-4xl font-medium tracking-tight">
+            Review the ghost behind the profile.
+          </h1>
+          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+            Add a name and public identifiers. Specter maps the subject's public
+            trail across time, then explains the signals and uncertainty.
+          </p>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => setForm(demoForm)}
+          className="gap-2"
+        >
+          <FlaskConical className="h-4 w-4" />
+          Load demo subject
+        </Button>
+      </header>
+
+      {demoMode && (
+        <div className="mb-6 border-l-2 border-primary bg-accent/50 px-4 py-3 text-xs text-accent-foreground">
+          Demo mode is active. The complete pipeline runs locally with simulated,
+          clearly labeled evidence until provider keys are configured.
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-7">
+        <Field
+          label="Full name"
+          required
+          error={errors.subject_name}
+          hint="The person's full or commonly used public name."
+        >
+          <Input
+            value={form.subject_name}
+            onChange={(event) => set("subject_name", event.target.value)}
+            placeholder="Jane Doe"
+            maxLength={120}
+          />
+        </Field>
+
+        <div className="grid gap-5 md:grid-cols-2">
+          <Field label="GitHub username" error={errors.github_username}>
+            <Input
+              value={form.github_username}
+              onChange={(event) => set("github_username", event.target.value)}
+              placeholder="janedoe"
+            />
+          </Field>
+          <Field label="X / Twitter handle">
+            <Input
+              value={form.x_handle}
+              onChange={(event) => set("x_handle", event.target.value)}
+              placeholder="@janedoe"
+            />
+          </Field>
+        </div>
+
+        <Field label="Personal website" error={errors.website_url}>
+          <Input
+            value={form.website_url}
+            onChange={(event) => set("website_url", event.target.value)}
+            placeholder="https://janedoe.com"
+            type="url"
+          />
+        </Field>
+
+        <div className="grid gap-5 md:grid-cols-2">
+          <Field label="LinkedIn URL" error={errors.linkedin_url}>
+            <Input
+              value={form.linkedin_url}
+              onChange={(event) => set("linkedin_url", event.target.value)}
+              placeholder="https://linkedin.com/in/janedoe"
+              type="url"
+            />
+          </Field>
+          <Field label="Other public profile" error={errors.other_profile_url}>
+            <Input
+              value={form.other_profile_url}
+              onChange={(event) => set("other_profile_url", event.target.value)}
+              placeholder="https://substack.com/@janedoe"
+              type="url"
+            />
+          </Field>
+        </div>
+
+        <Field label="Investigation context" required error={errors.context}>
+          <Select value={form.context} onValueChange={(value) => set("context", value)}>
+            <SelectTrigger>
+              <SelectValue placeholder="Why are you investigating?" />
+            </SelectTrigger>
+            <SelectContent>
+              {CONTEXTS.map((context) => (
+                <SelectItem key={context.value} value={context.value}>
+                  {context.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
+
+        <Field label="Notes" hint="Optional context or claims you want the dossier to examine.">
+          <Textarea
+            value={form.notes}
+            onChange={(event) => set("notes", event.target.value)}
+            placeholder="Claims eight years of React experience and a senior role since 2022."
+            rows={4}
+            maxLength={2000}
+          />
+        </Field>
+
+        <div className="border border-border bg-card p-4">
+          <label className="flex items-start gap-3">
+            <Checkbox
+              checked={form.consent}
+              onCheckedChange={(checked) => set("consent", checked === true)}
+              className="mt-0.5"
+            />
+            <span className="text-xs leading-relaxed text-muted-foreground">
+              I understand Specter analyzes public information only and returns
+              decision-support signals, not a verdict. I will not use this report
+              as the sole basis for a consequential decision.
+            </span>
+          </label>
+          {errors.consent && (
+            <p className="mt-2 text-xs text-destructive-primary">{errors.consent}</p>
+          )}
+        </div>
+
+        <div className="flex items-center justify-end gap-2 pt-2">
+          <Button type="button" variant="ghost" onClick={() => navigate("/dashboard")}>
+            Cancel
+          </Button>
+          <Button type="submit" disabled={submitting}>
+            {submitting ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <ArrowRight className="mr-2 h-4 w-4" />
+            )}
+            Start analysis
+          </Button>
+        </div>
+      </form>
+    </div>
+  );
+};
+
+const Field = ({
+  label,
+  required,
+  error,
+  hint,
+  children,
+}: {
+  label: string;
+  required?: boolean;
+  error?: string;
+  hint?: string;
+  children: React.ReactNode;
+}) => (
+  <div className="space-y-1.5">
+    <Label className="flex items-center gap-1 text-xs font-medium">
+      {label}
+      {required && <span className="text-primary">*</span>}
+    </Label>
+    {children}
+    {hint && !error && <p className="text-xs text-muted-foreground">{hint}</p>}
+    {error && <p className="text-xs text-destructive-primary">{error}</p>}
+  </div>
+);
+
+export default InvestigatePage;
+

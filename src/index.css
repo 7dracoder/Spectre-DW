@@ -1,0 +1,307 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: "Camera Plain Variable";
+  src: url("./CameraPlainVariable.woff2") format("woff2");
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --ease-in-quad: cubic-bezier(0.55, 0.085, 0.68, 0.53);
+  --ease-in-cubic: cubic-bezier(0.55, 0.055, 0.675, 0.19);
+  --ease-in-quart: cubic-bezier(0.895, 0.03, 0.685, 0.22);
+  --ease-in-quint: cubic-bezier(0.755, 0.05, 0.855, 0.06);
+  --ease-in-expo: cubic-bezier(0.95, 0.05, 0.795, 0.035);
+  --ease-in-circ: cubic-bezier(0.6, 0.04, 0.98, 0.335);
+  --ease-out-quad: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --ease-out-cubic: cubic-bezier(0.215, 0.61, 0.355, 1);
+  --ease-out-quart: cubic-bezier(0.165, 0.84, 0.44, 1);
+  --ease-out-quint: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-out-expo: cubic-bezier(0.19, 1, 0.22, 1);
+  --ease-out-circ: cubic-bezier(0.075, 0.82, 0.165, 1);
+  --ease-in-out-quad: cubic-bezier(0.455, 0.03, 0.515, 0.955);
+  --ease-in-out-cubic: cubic-bezier(0.645, 0.045, 0.355, 1);
+  --ease-in-out-quart: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-in-out-quint: cubic-bezier(0.86, 0, 0.07, 1);
+  --ease-in-out-expo: cubic-bezier(1, 0, 0, 1);
+  --ease-in-out-circ: cubic-bezier(0.785, 0.135, 0.15, 0.86);
+}
+
+@layer base {
+  :root {
+    --font-camera-plain: "Camera Plain Variable", ui-sans-serif, system-ui, sans-serif;
+
+    /* Specter — Warm Paper & Ember (light, minimal, Retrofly-warm) */
+    --background: 38 30% 97%;
+    --foreground: 20 14% 14%;
+    --card: 0 0% 100%;
+    --card-foreground: 20 14% 14%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 20 14% 14%;
+    --primary: 14 79% 53%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 36 24% 93%;
+    --secondary-foreground: 20 14% 14%;
+    --muted: 36 24% 93%;
+    --muted-foreground: 25 10% 42%;
+    --muted-foreground-subtle: 25 10% 58%;
+    --border: 32 18% 87%;
+    --input: 32 18% 87%;
+    --ring: 14 79% 57%;
+    --radius: 0.625rem;
+
+    --chart-1: 14 79% 57%;
+    --chart-2: 195 55% 50%;
+    --chart-3: 260 40% 60%;
+    --chart-4: 142 40% 45%;
+    --chart-5: 38 90% 55%;
+
+    --sidebar-background: 38 28% 96%;
+    --sidebar-foreground: 20 14% 14%;
+    --sidebar-primary: 14 79% 53%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 36 24% 92%;
+    --sidebar-accent-foreground: 20 14% 14%;
+    --sidebar-border: 32 18% 87%;
+    --sidebar-ring: 14 79% 57%;
+    --muted-border: 32 18% 84%;
+    --muted-active: 36 24% 89%;
+    --muted-hover: 36 24% 91%;
+
+    --accent: 14 79% 95%;
+    --accent-foreground: 14 79% 32%;
+    --accent-primary: 14 79% 53%;
+    --accent-primary-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 95%;
+    --destructive-foreground: 0 72% 45%;
+    --destructive-primary: 0 72% 51%;
+    --destructive-primary-foreground: 0 0% 100%;
+
+    --success: 142 50% 92%;
+    --success-foreground: 142 60% 26%;
+    --success-primary: 142 60% 38%;
+    --success-primary-foreground: 0 0% 100%;
+
+    --warning: 38 92% 92%;
+    --warning-foreground: 28 80% 38%;
+    --warning-primary: 32 92% 52%;
+    --warning-primary-foreground: 0 0% 100%;
+
+    --notification-primary: 14 79% 53%;
+    --notification-primary-foreground: 0 0% 100%;
+
+    --affirmative: 36 24% 93%;
+    --affirmative-foreground: 20 14% 14%;
+    --affirmative-primary: 20 14% 14%;
+    --affirmative-primary-foreground: 38 30% 97%;
+
+    --specter-ember: 14 79% 53%;
+    --specter-ember-glow: 14 100% 65%;
+    --specter-cream: 38 40% 96%;
+    --specter-paper: 36 30% 92%;
+    --specter-ink: 20 14% 14%;
+    --specter-ink-soft: 25 10% 35%;
+
+    --brand-ocean-primary: 14 79% 53%;
+    --brand-sapphire: 36 24% 93%;
+    --brand-sapphire-foreground: 25 10% 32%;
+    --brand-sapphire-primary: 25 10% 32%;
+    --brand-sapphire-primary-foreground: 0 0% 100%;
+    --brand-twilight: 36 24% 93%;
+    --brand-twilight-foreground: 25 10% 35%;
+    --brand-twilight-primary: 25 10% 35%;
+    --brand-twilight-primary-foreground: 0 0% 100%;
+    --brand-bubblegum: 14 79% 95%;
+    --brand-bubblegum-foreground: 14 79% 40%;
+    --brand-bubblegum-primary: 14 79% 53%;
+    --brand-bubblegum-primary-foreground: 0 0% 100%;
+    --brand-flamingo: 14 79% 92%;
+    --brand-flamingo-foreground: 14 79% 45%;
+    --brand-flamingo-primary: 14 79% 53%;
+    --brand-flamingo-primary-foreground: 0 0% 100%;
+    --brand-tiger: 14 79% 90%;
+    --brand-tiger-foreground: 14 79% 50%;
+    --brand-tiger-primary: 14 79% 53%;
+    --brand-tiger-primary-foreground: 0 0% 100%;
+    --brand-saffron: 38 92% 90%;
+    --brand-saffron-foreground: 32 92% 40%;
+    --brand-saffron-primary: 32 92% 52%;
+    --brand-saffron-primary-foreground: 0 0% 100%;
+    --brand-scarlet-primary: 0 72% 51%;
+  }
+
+  .dark {
+    /* Dark not used by default — kept as fallback inheriting light tokens. */
+    --background: 38 30% 97%;
+    --foreground: 20 14% 14%;
+    --card: 0 0% 100%;
+    --card-foreground: 20 14% 14%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 20 14% 14%;
+    --primary: 14 79% 53%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 36 24% 93%;
+    --secondary-foreground: 20 14% 14%;
+    --muted: 36 24% 93%;
+    --muted-foreground: 25 10% 42%;
+    --border: 32 18% 87%;
+    --input: 32 18% 87%;
+    --ring: 14 79% 57%;
+    --radius: 0.625rem;
+  }
+
+  * {
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    @apply border-border;
+    @apply scrollbar-thin scrollbar-track-transparent scrollbar-thumb-muted-foreground;
+    font-synthesis: none !important;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    @apply text-base;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3, h4 { font-family: Georgia, "Times New Roman", ui-serif, serif; font-feature-settings: "ss01"; }
+  h1 { @apply text-2xl font-semibold; }
+  h2 { @apply text-xl font-semibold; }
+  h3 { @apply text-lg font-semibold; }
+  h4 { @apply text-base font-semibold; }
+
+  .prose :where(pre):not(:where([class~="not-prose"] *)) {
+    background: unset !important;
+    background-color: unset !important;
+    color: unset !important;
+    overflow-x: unset !important;
+    font-weight: unset !important;
+    font-size: unset !important;
+    line-height: unset !important;
+    margin-top: unset !important;
+    margin-bottom: unset !important;
+    border-radius: unset !important;
+    padding-top: unset !important;
+    padding-right: unset !important;
+    padding-bottom: unset !important;
+    padding-left: unset !important;
+  }
+
+  .prose pre.ascii-diagram-block {
+    font-family: Menlo, Monaco, Consolas, "Courier New", monospace !important;
+    font-size: 13px !important;
+    line-height: 1.5 !important;
+    font-variant-ligatures: none !important;
+    font-feature-settings: normal !important;
+  }
+
+  .theme {
+    --animate-gradient: gradient 8s linear infinite;
+  }
+}
+
+@layer utilities {
+  .overflow-wrap-anywhere {
+    overflow-wrap: anywhere;
+  }
+  .dropdown-content-min-width-full {
+    min-width: var(--radix-dropdown-menu-trigger-width);
+  }
+  .dropdown-content-width-full {
+    width: var(--radix-dropdown-menu-trigger-width);
+  }
+  .popover-content-min-width-full {
+    min-width: var(--radix-popover-trigger-width);
+  }
+  .popover-content-width-full {
+    width: var(--radix-popover-trigger-width);
+  }
+  .tooltip-content-width-full {
+    width: var(--radix-tooltip-trigger-width);
+  }
+  .chat-shadow {
+    box-shadow:
+      rgba(0, 0, 0, 0) 0px 0px 0px 0px,
+      rgba(0, 0, 0, 0) 0px 0px 0px 0px,
+      rgba(0, 0, 0, 0.04) 0px 15px 25px 0px,
+      rgba(0, 0, 0, 0.04) 0px 4px 6px -4px;
+  }
+  .container-home {
+    @apply mx-auto w-full max-w-[1536px] px-2 md:px-4;
+  }
+  .special-message {
+    @apply text-lg italic text-muted-foreground md:text-base;
+  }
+}
+
+/* Prose / Markdown overrides */
+.prose-markdown { background-color: transparent !important; }
+.prose.prose-markdown { background-color: transparent !important; }
+.prose h1 { @apply font-medium; }
+.prose h2 { @apply font-medium; }
+.prose h3 { @apply font-medium; }
+.prose h4 { @apply font-medium; }
+.prose strong { @apply font-medium; }
+
+/* === ANIMATIONS === */
+
+@keyframes gradient-cycle {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 300% 50%; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes border-beam-travel {
+  0% { offset-distance: 0%; }
+  100% { offset-distance: 100%; }
+}
+
+/* === NOTION-STYLE CARD === */
+.glass-card {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  box-shadow: 0 1px 3px hsl(0 0% 0% / 0.04);
+}
+
+.glass-card-hover {
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+.glass-card-hover:hover {
+  background: hsl(var(--muted) / 0.5);
+  border-color: hsl(var(--border));
+}
+
+/* Brand text — simple foreground */
+.animated-brand-gradient {
+  color: hsl(var(--foreground));
+}
+
+/* Simple primary button style */
+.rainbow-shimmer {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
+/* Pulsing status dot */
+.status-pulse {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* Polished card (backward compat) */
+.polished-card {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  box-shadow: 0 1px 3px hsl(0 0% 0% / 0.04);
+}
