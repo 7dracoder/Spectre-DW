@@ -1,0 +1,29 @@
+[app]
+name = "specter"
+script = "./tower_pipeline.py"
+source = ["./tower_pipeline.py"]
+
+[[parameters]]
+name = "investigation_id"
+description = "Specter investigation identifier"
+default = ""
+
+[[parameters]]
+name = "subject_name"
+description = "Subject being investigated"
+default = ""
+
+[[parameters]]
+name = "context"
+description = "Investigation context"
+default = ""
+
+[[parameters]]
+name = "source_count"
+description = "Number of public sources collected"
+default = "0"
+
+[[parameters]]
+name = "consistency_score"
+description = "Computed human consistency score"
+default = "0"

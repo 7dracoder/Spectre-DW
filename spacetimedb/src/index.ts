@@ -1,6 +1,15 @@
 import { schema, table, t } from "spacetimedb/server";
 import type { Identity } from "spacetimedb";
-import { buildInvestigationRecord } from "./demoEvidence";
+import {
+  buildInvestigationRecord,
+  buildLiveInvestigationRecord,
+  type InvestigationInput,
+} from "./demoEvidence";
+import {
+  discoverPublicEvidence,
+  notifyTower,
+  synthesizeInvestigation,
+} from "./providers";
 
 const investigations = table(
   { name: "investigations", public: true },
@@ -174,7 +183,7 @@ export const runInvestigation = spacetimedb.procedure(
   { investigationId: t.string() },
   t.string(),
   (ctx, { investigationId }) => {
-    const investigation = ctx.withTx((tx) => {
+    const { investigation, provider } = ctx.withTx((tx) => {
       const row = tx.db.investigations.id.find(investigationId);
       if (!row) throw new Error("Investigation not found.");
       if (!row.owner.isEqual(tx.sender)) {
@@ -187,74 +196,155 @@ export const runInvestigation = spacetimedb.procedure(
         stageIndex: 2,
         updatedAt: new Date().toISOString(),
       });
-      return row;
+      const getProvider = (key: string) =>
+        tx.db.providerConfig.key.find(key)?.value || "";
+      return {
+        investigation: row,
+        provider: {
+          nimbleApiKey: getProvider("NIMBLE_API_KEY"),
+          runpodApiKey: getProvider("RUNPOD_API_KEY"),
+          runpodTextModel:
+            getProvider("RUNPOD_TEXT_MODEL") || "qwen3-32b-awq",
+          towerApiKey: getProvider("TOWER_API_KEY"),
+          towerAppName: getProvider("TOWER_APP_NAME"),
+          towerEnvironment:
+            getProvider("TOWER_ENVIRONMENT") || "default",
+        },
+      };
     });
 
-    const input = JSON.parse(investigation.recordJson);
-    const record = buildInvestigationRecord(
-      input,
-      investigation.id,
-      investigation.owner.toHexString(),
-      investigation.createdAt,
-    );
+    try {
+      const input = JSON.parse(investigation.recordJson) as InvestigationInput;
+      let record = buildInvestigationRecord(
+        input,
+        investigation.id,
+        investigation.owner.toHexString(),
+        investigation.createdAt,
+      );
 
-    ctx.withTx((tx) => {
-      for (const row of tx.db.sourceDocuments.investigationId.filter(investigationId)) {
-        tx.db.sourceDocuments.id.delete(row.id);
-      }
-      for (const row of tx.db.signals.investigationId.filter(investigationId)) {
-        tx.db.signals.id.delete(row.id);
-      }
-      for (const row of tx.db.claims.investigationId.filter(investigationId)) {
-        tx.db.claims.id.delete(row.id);
-      }
-      for (const row of tx.db.embeddings.investigationId.filter(investigationId)) {
-        tx.db.embeddings.id.delete(row.id);
-      }
-
-      for (const source of record.sources) {
-        tx.db.sourceDocuments.insert({
-          id: source.id,
-          investigationId,
-          recordJson: JSON.stringify(source),
-        });
-      }
-      for (const signal of record.signals) {
-        tx.db.signals.insert({
-          id: signal.id,
-          investigationId,
-          recordJson: JSON.stringify(signal),
-        });
-      }
-      for (const claim of record.claims) {
-        tx.db.claims.insert({
-          id: claim.id,
-          investigationId,
-          recordJson: JSON.stringify(claim),
-        });
-      }
-      for (const embedding of record.embeddings) {
-        tx.db.embeddings.insert({
-          id: embedding.id,
-          investigationId,
-          recordJson: JSON.stringify(embedding),
-        });
+      if (provider.nimbleApiKey) {
+        try {
+          const evidence = discoverPublicEvidence(
+            ctx.http,
+            provider.nimbleApiKey,
+            input,
+          );
+          let narrative = null;
+          if (provider.runpodApiKey) {
+            try {
+              narrative = synthesizeInvestigation(
+                ctx.http,
+                provider.runpodApiKey,
+                provider.runpodTextModel,
+                input,
+                evidence,
+              );
+            } catch {
+              narrative = null;
+            }
+          }
+          record = buildLiveInvestigationRecord(
+            input,
+            investigation.id,
+            investigation.owner.toHexString(),
+            investigation.createdAt,
+            evidence,
+            narrative,
+          );
+        } catch {
+          // The deterministic dossier remains available when discovery is down.
+        }
       }
 
-      const row = tx.db.investigations.id.find(investigationId);
-      if (!row) throw new Error("Investigation disappeared during processing.");
-      tx.db.investigations.id.update({
-        ...row,
-        status: record.status,
-        consistencyScore: record.consistency_score,
-        stageIndex: record.stage_index,
-        progressPercent: record.progress_percent,
-        recordJson: JSON.stringify(record),
-        updatedAt: record.updated_at,
+      ctx.withTx((tx) => {
+        for (const row of tx.db.sourceDocuments.investigationId.filter(investigationId)) {
+          tx.db.sourceDocuments.id.delete(row.id);
+        }
+        for (const row of tx.db.signals.investigationId.filter(investigationId)) {
+          tx.db.signals.id.delete(row.id);
+        }
+        for (const row of tx.db.claims.investigationId.filter(investigationId)) {
+          tx.db.claims.id.delete(row.id);
+        }
+        for (const row of tx.db.embeddings.investigationId.filter(investigationId)) {
+          tx.db.embeddings.id.delete(row.id);
+        }
+
+        for (const source of record.sources) {
+          tx.db.sourceDocuments.insert({
+            id: source.id,
+            investigationId,
+            recordJson: JSON.stringify(source),
+          });
+        }
+        for (const signal of record.signals) {
+          tx.db.signals.insert({
+            id: signal.id,
+            investigationId,
+            recordJson: JSON.stringify(signal),
+          });
+        }
+        for (const claim of record.claims) {
+          tx.db.claims.insert({
+            id: claim.id,
+            investigationId,
+            recordJson: JSON.stringify(claim),
+          });
+        }
+        for (const embedding of record.embeddings) {
+          tx.db.embeddings.insert({
+            id: embedding.id,
+            investigationId,
+            recordJson: JSON.stringify(embedding),
+          });
+        }
+
+        const row = tx.db.investigations.id.find(investigationId);
+        if (!row) throw new Error("Investigation disappeared during processing.");
+        tx.db.investigations.id.update({
+          ...row,
+          status: record.status,
+          consistencyScore: record.consistency_score,
+          stageIndex: record.stage_index,
+          progressPercent: record.progress_percent,
+          recordJson: JSON.stringify(record),
+          updatedAt: record.updated_at,
+        });
       });
-    });
 
-    return JSON.stringify(record);
+      if (provider.towerApiKey && provider.towerAppName) {
+        try {
+          notifyTower(
+            ctx.http,
+            provider.towerApiKey,
+            provider.towerAppName,
+            provider.towerEnvironment,
+            {
+              investigationId,
+              subjectName: record.subject_name,
+              context: record.context,
+              sourceCount: record.sources.length,
+              consistencyScore: record.consistency_score,
+            },
+          );
+        } catch {
+          // Audit orchestration must not invalidate a completed dossier.
+        }
+      }
+
+      return JSON.stringify(record);
+    } catch (error) {
+      ctx.withTx((tx) => {
+        const row = tx.db.investigations.id.find(investigationId);
+        if (!row) return;
+        tx.db.investigations.id.update({
+          ...row,
+          status: "failed",
+          updatedAt: new Date().toISOString(),
+        });
+      });
+      throw error;
+    }
   },
 );
 
