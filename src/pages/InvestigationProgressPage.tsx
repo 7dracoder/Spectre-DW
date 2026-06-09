@@ -5,8 +5,8 @@ import {
   ArrowRight,
   Check,
   Circle,
-  Database,
   FileSearch,
+  Library,
   Loader2,
   Radar,
 } from "lucide-react";
@@ -29,9 +29,9 @@ const InvestigationProgressPage = () => {
         if (!active) return;
         if (!data) setError("Investigation not found.");
         else setRecord(data);
-      } catch (loadError) {
+      } catch {
         if (active) {
-          setError(loadError instanceof Error ? loadError.message : "Unable to load investigation.");
+          setError("Unable to load this investigation. Please try again.");
         }
       }
     };
@@ -73,7 +73,7 @@ const InvestigationProgressPage = () => {
 
   return (
     <div className="mx-auto max-w-6xl py-8 md:py-12">
-      <header className="mb-8 flex flex-wrap items-end justify-between gap-5 border-b border-border pb-7">
+      <header className="mb-8 flex flex-wrap items-end justify-between gap-5 border-b border-border pb-8">
         <div>
           <Link
             to="/dashboard"
@@ -83,7 +83,7 @@ const InvestigationProgressPage = () => {
             All investigations
           </Link>
           <p className="mt-6 text-xs uppercase tracking-[0.2em] text-primary">
-            Live investigation
+            Evidence review
           </p>
           <h1 className="mt-1 text-4xl font-medium tracking-tight">{record.subject_name}</h1>
           <p className="mt-2 text-sm text-muted-foreground">
@@ -118,7 +118,7 @@ const InvestigationProgressPage = () => {
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
         <section className="border border-border bg-card">
           <div className="border-b border-border px-5 py-4">
-            <h2 className="text-base font-medium">Investigation pipeline</h2>
+            <h2 className="text-base font-medium">Review progress</h2>
           </div>
           <div>
             {PIPELINE_STEPS.map((step, index) => {
@@ -150,8 +150,8 @@ const InvestigationProgressPage = () => {
                     <p className="text-sm font-medium">{step.label}</p>
                     <p className="mt-1 text-xs text-muted-foreground">{step.detail}</p>
                   </div>
-                  <span className="mt-0.5 rounded-full border border-border bg-secondary px-2 py-1 text-[10px] text-muted-foreground">
-                    {step.provider}
+                  <span className="mt-0.5 font-mono text-[10px] text-muted-foreground">
+                    {String(index + 1).padStart(2, "0")}
                   </span>
                 </div>
               );
@@ -163,13 +163,13 @@ const InvestigationProgressPage = () => {
           <section className="grid grid-cols-2 gap-px overflow-hidden border border-border bg-border">
             <Counter label="Sources found" value={record.counters.sources} icon={FileSearch} />
             <Counter label="Platforms matched" value={record.counters.platforms} icon={Radar} />
-            <Counter label="Timeline events" value={record.counters.timelineEvents} icon={Database} />
+            <Counter label="Timeline events" value={record.counters.timelineEvents} icon={Library} />
             <Counter label="Writing samples" value={record.counters.writingSamples} icon={FileSearch} />
           </section>
 
           <section className="border border-border bg-card">
             <div className="border-b border-border px-5 py-4">
-              <h2 className="text-base font-medium">Partial findings</h2>
+              <h2 className="text-base font-medium">Evidence collected</h2>
             </div>
             <div>
               {visibleSources.map((source, index) => (
@@ -216,4 +216,3 @@ const Counter = ({
 );
 
 export default InvestigationProgressPage;
-

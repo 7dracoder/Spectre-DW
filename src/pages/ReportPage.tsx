@@ -10,8 +10,10 @@ import {
   Loader2,
   ShieldAlert,
 } from "lucide-react";
+import { ConversationProvider } from "@elevenlabs/react";
 import { Button } from "@/components/ui/button";
 import FingerprintScatter from "@/components/specter/FingerprintScatter";
+import VoiceInvestigator from "@/components/specter/VoiceInvestigator";
 import { getInvestigation } from "@/lib/investigationApi";
 import { useToast } from "@/hooks/use-toast";
 import type { InvestigationRecord } from "@/types/investigation";
@@ -32,9 +34,9 @@ const ReportPage = () => {
         if (!data) setError("Investigation not found.");
         else setRecord(data);
       })
-      .catch((loadError) => {
+      .catch(() => {
         if (active) {
-          setError(loadError instanceof Error ? loadError.message : "Unable to load dossier.");
+          setError("Unable to load this dossier. Please try again.");
         }
       })
       .finally(() => {
@@ -110,7 +112,7 @@ const ReportPage = () => {
   };
 
   return (
-    <div className="mx-auto max-w-7xl space-y-8 py-8">
+    <div className="mx-auto max-w-7xl space-y-8 py-6 md:py-8">
       <header className="flex flex-wrap items-end justify-between gap-5 border-b border-border pb-7">
         <div>
           <Link
@@ -121,7 +123,9 @@ const ReportPage = () => {
             All investigations
           </Link>
           <p className="mt-6 text-xs uppercase tracking-[0.2em] text-primary">Final dossier</p>
-          <h1 className="mt-1 text-4xl font-medium tracking-tight">{record.subject_name}</h1>
+          <h1 className="mt-2 text-4xl font-medium tracking-[-0.035em] md:text-5xl">
+            {record.subject_name}
+          </h1>
           <div className="mt-2 flex flex-wrap gap-x-2 text-xs text-muted-foreground">
             <span className="capitalize">{record.context.replace("_", " ")}</span>
             <span>·</span>
@@ -146,7 +150,7 @@ const ReportPage = () => {
         </div>
       </header>
 
-      <section className="grid overflow-hidden border border-border bg-border lg:grid-cols-[320px_1fr_1fr] lg:gap-px">
+      <section className="grid overflow-hidden border border-border bg-border shadow-[0_16px_50px_hsl(20_14%_14%/0.04)] lg:grid-cols-[320px_1fr_1fr] lg:gap-px">
         <div className="bg-card p-6">
           <p className="text-xs text-muted-foreground">Human Consistency Score</p>
           <div className="mt-4 flex items-center gap-5">
@@ -200,13 +204,13 @@ const ReportPage = () => {
           <div className="space-y-5">
             <SignalList
               icon={CheckCircle2}
-              label="What supports authenticity"
+              label="Supporting evidence"
               items={record.strengths}
               tone="text-success-primary"
             />
             <SignalList
               icon={ShieldAlert}
-              label="What raises questions"
+              label="Open questions"
               items={record.concerns}
               tone="text-warning-primary"
             />
@@ -214,10 +218,11 @@ const ReportPage = () => {
         </Panel>
       </section>
 
-      <Panel
-        title="Writing fingerprint"
-        meta="RunPod · GPU embeddings + clustering"
-      >
+      <ConversationProvider>
+        <VoiceInvestigator record={record} />
+      </ConversationProvider>
+
+      <Panel title="Writing fingerprint" meta="54 public writing samples">
         <FingerprintScatter points={record.embeddings} />
         <p className="mt-4 max-w-3xl text-xs leading-relaxed text-muted-foreground">
           The map shows healthy variation across contexts while preserving a
@@ -364,7 +369,7 @@ const Panel = ({
   meta?: string;
   children: React.ReactNode;
 }) => (
-  <section className="border border-border bg-card p-5 md:p-6">
+  <section className="border border-border bg-card p-5 shadow-[0_10px_34px_hsl(20_14%_14%/0.025)] md:p-6">
     <header className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
       <h2 className="text-lg font-medium">{title}</h2>
       {meta && (

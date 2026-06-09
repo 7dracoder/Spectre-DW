@@ -57,7 +57,7 @@ export function AnimatedFolder({ title, projects, className }: AnimatedFolderPro
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
-        {/* Subtle background glow on hover - Lovable gradient */}
+        {/* Subtle background glow on hover */}
         <div
           className={cn(
             "absolute -inset-4 rounded-3xl transition-all duration-500",

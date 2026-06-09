@@ -15,45 +15,45 @@ const TOTAL_STAGES = 7;
 export const PIPELINE_STEPS = [
   {
     key: "discover",
-    label: "Matching public identity traces",
-    detail: "Searching likely public profiles and identity endpoints.",
-    provider: "Nimble",
+    label: "Establishing the public footprint",
+    detail: "Identifying relevant profiles, publications, projects, and dated activity.",
+    provider: "Discovery",
   },
   {
     key: "crawl",
-    label: "Crawling public sources",
-    detail: "Extracting dated posts, repositories, articles, and profile evidence.",
-    provider: "Nimble",
+    label: "Reviewing public sources",
+    detail: "Collecting dated material and preserving source context.",
+    provider: "Evidence",
   },
   {
     key: "structure",
-    label: "Building the evidence graph",
-    detail: "Normalizing sources, claims, timestamps, and platform relationships.",
-    provider: "Tower",
+    label: "Reconstructing the timeline",
+    detail: "Organizing sources, claims, dates, and cross-platform relationships.",
+    provider: "Timeline",
   },
   {
     key: "embed",
-    label: "Embedding writing samples",
-    detail: "Generating GPU-backed vectors for public text artifacts.",
-    provider: "RunPod",
+    label: "Comparing writing patterns",
+    detail: "Examining how public language varies across time and context.",
+    provider: "Authorship",
   },
   {
     key: "signals",
-    label: "Computing timeline and anomalies",
-    detail: "Scoring continuity, expertise evidence, bursts, and cross-platform coherence.",
-    provider: "Tower",
+    label: "Assessing consistency signals",
+    detail: "Reviewing continuity, claim support, activity bursts, and coherence.",
+    provider: "Signals",
   },
   {
     key: "fingerprint",
-    label: "Mapping stylistic clusters",
-    detail: "Projecting writing vectors into the interactive fingerprint map.",
-    provider: "RunPod",
+    label: "Mapping the writing fingerprint",
+    detail: "Grouping public writing samples and highlighting meaningful outliers.",
+    provider: "Pattern",
   },
   {
     key: "dossier",
-    label: "Writing the dossier",
-    detail: "Explaining structured evidence with uncertainty and caveats.",
-    provider: "Gemini",
+    label: "Preparing the dossier",
+    detail: "Summarizing evidence, uncertainty, and recommended verification.",
+    provider: "Review",
   },
 ] as const;
 
@@ -411,4 +411,3 @@ export const createFeaturedDemo = () =>
     context: "hiring",
     notes: "Demo subject with a multi-year public engineering and writing footprint.",
   });
-

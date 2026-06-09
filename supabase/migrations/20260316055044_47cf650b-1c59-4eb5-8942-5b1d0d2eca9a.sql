@@ -1,1 +1,0 @@
-ALTER TABLE public.timeline_entries ADD COLUMN entry_time time without time zone DEFAULT NULL;

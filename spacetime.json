@@ -1,0 +1,11 @@
+{
+  "database": "spectre-dw",
+  "module-path": "./spacetimedb",
+  "server": "local",
+  "generate": [
+    {
+      "language": "typescript",
+      "out-dir": "./src/module_bindings"
+    }
+  ]
+}

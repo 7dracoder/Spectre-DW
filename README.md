@@ -1,54 +1,84 @@
-# Specter
+# Spectre-DW
 
-Specter is a public-identity trust analysis product for hiring teams, investors,
-journalists, and operators. It accepts public identifiers, runs a structured
-investigation pipeline, and produces an evidence-backed human-consistency
-dossier with a GPU-style writing fingerprint visualization.
+Spectre-DW is a public-identity trust analysis product for hiring teams,
+investors, journalists, and operators. It produces an evidence-backed human
+consistency dossier and an interactive writing fingerprint.
 
-## What Works Now
+## What Works
 
-- Landing page, investigation intake, live pipeline state, and final dossier.
-- Keyless local demo mode for end-to-end testing.
-- Supabase-ready data model and Edge Function entry point.
-- Placeholder configuration for Nimble, Tower, RunPod, and Gemini.
-- Supplied Specter ghost mark installed as the app logo.
+- Complete investigation intake, progress, dossier, and fingerprint flow.
+- Keyless local demo mode backed by browser storage.
+- SpacetimeDB module with typed tables, reducers, procedures, and generated
+  TypeScript bindings.
+- Owner-only private provider configuration in SpacetimeDB.
+- ElevenLabs voice investigator with microphone controls, dossier context,
+  short-lived WebRTC authentication, and voice-session audit rows.
+- Browser voice briefing fallback while demo mode is enabled.
 
-## Local Development
+## Local Frontend
 
 ```sh
 npm install
 npm run dev
 ```
 
-The checked-in `.env` defaults to `VITE_DEMO_MODE="true"`, so the app works
-without external keys. Use **Run demo** or **Load demo subject** to exercise the
-complete flow.
+The checked-in `.env` uses `VITE_DEMO_MODE="true"`, so the full UI works without
+external services.
 
-## Production Configuration
+## SpacetimeDB
 
-Copy `.env.example` into your deployment environment and set:
-
-- `VITE_SUPABASE_URL`
-- `VITE_SUPABASE_PUBLISHABLE_KEY`
-- `VITE_DEMO_MODE="false"`
-
-Set provider secrets server-side in Supabase:
+Build and regenerate the typed client:
 
 ```sh
-supabase secrets set NIMBLE_API_KEY=...
-supabase secrets set TOWER_WEBHOOK_URL=...
-supabase secrets set RUNPOD_API_KEY=...
-supabase secrets set RUNPOD_ENDPOINT_ID=...
-supabase secrets set GEMINI_API_KEY=...
+npm run db:build
+npm run db:generate
 ```
 
-Provider keys should never be stored in the browser.
+Run a local SpacetimeDB host, publish the module, then switch demo mode off:
+
+```sh
+spacetime start
+spacetime publish --server local spectre-dw
+```
+
+```env
+VITE_DEMO_MODE="false"
+VITE_SPACETIMEDB_URI="http://127.0.0.1:3000"
+VITE_SPACETIMEDB_DATABASE="spectre-dw"
+```
+
+SpacetimeDB owns investigation records, normalized evidence payloads, provider
+configuration, and ElevenLabs voice-session audit records.
+
+## Provider Secrets
+
+Provider keys are private SpacetimeDB rows and can only be changed by the
+identity that published the database:
+
+```powershell
+$name = '\"ELEVENLABS_API_KEY\"'
+$value = '\"your-key\"'
+spacetime call --server local spectre-dw configure_provider $name $value
+
+$name = '\"ELEVENLABS_AGENT_ID\"'
+$value = '\"your-agent-id\"'
+spacetime call --server local spectre-dw configure_provider $name $value
+```
+
+Do not prefix provider credentials with `VITE_`; Vite-prefixed values are
+exposed to browser code. Use the same owner-only reducer for the Nimble,
+RunPod, Tower, and Gemini placeholders listed in `.env.example`.
+
+## ElevenLabs Agent
+
+Create a private ElevenLabs agent, then use
+[`docs/elevenlabs-agent-prompt.md`](docs/elevenlabs-agent-prompt.md) as its
+system prompt. The app supplies dynamic dossier fields and sends the full
+evidence context when each conversation connects.
 
 ## Stack
 
-- Vite
-- React
-- TypeScript
-- Tailwind CSS
-- shadcn/ui
-- Supabase
+- Vite, React, TypeScript
+- Tailwind CSS and shadcn/ui
+- SpacetimeDB
+- ElevenLabs Agents

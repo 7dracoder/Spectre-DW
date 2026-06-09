@@ -38,7 +38,7 @@ const FingerprintScatter = ({ points }: { points: FingerprintPoint[] }) => {
     return (
       <div className="grid h-[360px] place-items-center border border-dashed border-border bg-background/50">
         <p className="max-w-sm text-center text-xs text-muted-foreground">
-          The RunPod writing fingerprint will appear when embeddings are available.
+          The writing fingerprint will appear when enough public samples are available.
         </p>
       </div>
     );
@@ -132,4 +132,3 @@ const FingerprintScatter = ({ points }: { points: FingerprintPoint[] }) => {
 };
 
 export default FingerprintScatter;
-

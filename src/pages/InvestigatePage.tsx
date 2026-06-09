@@ -113,10 +113,10 @@ const InvestigatePage = () => {
       );
       if (!record) throw new Error("Investigation was not created.");
       navigate(`/investigation/${record.id}`);
-    } catch (error) {
+    } catch {
       toast({
         title: "Could not start investigation",
-        description: error instanceof Error ? error.message : "Please try again.",
+        description: "The review could not be started. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -129,12 +129,12 @@ const InvestigatePage = () => {
       <header className="mb-10 grid gap-4 border-b border-border pb-8 md:grid-cols-[1fr_auto] md:items-end">
         <div>
           <p className="text-xs uppercase tracking-[0.2em] text-primary">New investigation</p>
-          <h1 className="mt-2 text-4xl font-medium tracking-tight">
-            Review the ghost behind the profile.
+          <h1 className="mt-2 text-4xl font-medium tracking-[-0.03em] md:text-5xl">
+            Begin a public identity review.
           </h1>
           <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-            Add a name and public identifiers. Specter maps the subject's public
-            trail across time, then explains the signals and uncertainty.
+            Add a name and relevant public identifiers. Specter reconstructs the
+            subject's public history and organizes the evidence for careful review.
           </p>
         </div>
         <Button
@@ -150,8 +150,8 @@ const InvestigatePage = () => {
 
       {demoMode && (
         <div className="mb-6 border-l-2 border-primary bg-accent/50 px-4 py-3 text-xs text-accent-foreground">
-          Demo mode is active. The complete pipeline runs locally with simulated,
-          clearly labeled evidence until provider keys are configured.
+          Sample workspace is active. Evidence in sample dossiers is simulated
+          and clearly labeled throughout the review.
         </div>
       )}
 
@@ -301,4 +301,3 @@ const Field = ({
 );
 
 export default InvestigatePage;
-

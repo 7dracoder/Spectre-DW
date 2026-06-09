@@ -12,7 +12,6 @@ import NotFound from "./pages/NotFound";
 import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
 import ProtectedRoute from "./components/ProtectedRoute";
-import AuthCallback from "./pages/AuthCallback";
 import AuthenticatedLayout from "./components/app/AuthenticatedLayout";
 import InvestigationsListPage from "./pages/InvestigationsListPage";
 import InvestigatePage from "./pages/InvestigatePage";
@@ -29,7 +28,6 @@ const AnimatedRoutes = () => {
       <Routes location={location} key={location.pathname}>
         <Route path="/" element={<PageTransition><LandingPage /></PageTransition>} />
         <Route path="/login" element={<PageTransition><LoginPage /></PageTransition>} />
-        <Route path="/auth/callback" element={<AuthCallback />} />
         <Route
           path="/dashboard"
           element={
