@@ -14,8 +14,8 @@ const AuthenticatedLayout = ({
     <main
       className={
         fullWidth
-          ? "px-4 py-4 md:px-6 md:py-6"
-          : "mx-auto max-w-[1400px] px-4 py-6 md:px-8 md:py-8"
+          ? "px-4 py-4 md:px-8 md:py-6"
+          : "mx-auto max-w-[1440px] px-4 py-6 md:px-8 md:py-8"
       }
     >
       {children}
@@ -24,4 +24,3 @@ const AuthenticatedLayout = ({
 );
 
 export default AuthenticatedLayout;
-
