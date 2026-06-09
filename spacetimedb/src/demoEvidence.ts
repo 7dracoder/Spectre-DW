@@ -1,4 +1,10 @@
-type InvestigationInput = {
+import type {
+  InvestigationNarrative,
+  PublicEvidence,
+  PublicEvidenceResult,
+} from "./providers";
+
+export type InvestigationInput = {
   subject_name: string;
   github_username?: string;
   x_handle?: string;
@@ -321,4 +327,197 @@ export const buildInvestigationRecord = (
     claims,
     embeddings,
   };
+};
+
+const cleanText = (value: string, fallback: string, maxLength = 360) => {
+  const normalized = value.replace(/\s+/g, " ").trim();
+  if (!normalized) return fallback;
+  return normalized.length > maxLength
+    ? `${normalized.slice(0, maxLength - 1).trimEnd()}...`
+    : normalized;
+};
+
+const classifySource = (result: PublicEvidenceResult) => {
+  try {
+    const hostname = new URL(result.url).hostname.replace(/^www\./, "");
+    if (hostname === "github.com") {
+      return { platform: "GitHub", sourceType: "repository" };
+    }
+    if (hostname.endsWith("linkedin.com")) {
+      return { platform: "LinkedIn", sourceType: "profile" };
+    }
+    if (hostname === "x.com" || hostname === "twitter.com") {
+      return { platform: "X", sourceType: "post" };
+    }
+    if (hostname.endsWith("youtube.com") || hostname === "youtu.be") {
+      return { platform: "YouTube", sourceType: "media" };
+    }
+    return { platform: "Website", sourceType: "webpage" };
+  } catch {
+    return { platform: "Website", sourceType: "webpage" };
+  }
+};
+
+const normalizePublishedAt = (value: string | undefined, fallback: string) => {
+  if (!value) return fallback;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? fallback : parsed.toISOString();
+};
+
+const calculateWeightedScore = (
+  signals: Array<{ score: number; weight: number }>,
+) => {
+  const weighted = signals.reduce(
+    (sum, signal) => sum + signal.score * signal.weight,
+    0,
+  );
+  const totalWeight = signals.reduce(
+    (sum, signal) => sum + signal.weight,
+    0,
+  );
+  return Math.round(weighted / totalWeight);
+};
+
+export const buildLiveInvestigationRecord = (
+  input: InvestigationInput,
+  id: string,
+  owner: string,
+  createdAt: string,
+  evidence: PublicEvidence,
+  narrative?: InvestigationNarrative | null,
+) => {
+  const record = buildInvestigationRecord(input, id, owner, createdAt);
+  const sources = evidence.results.slice(0, 10).map((result, index) => {
+    const classification = classifySource(result);
+    return {
+      id: `${id}-source-${index + 1}`,
+      platform: classification.platform,
+      source_type: classification.sourceType,
+      url: result.url,
+      title: cleanText(
+        result.title,
+        `${input.subject_name} public source ${index + 1}`,
+        160,
+      ),
+      published_at: normalizePublishedAt(result.publishedAt, createdAt),
+      snippet: cleanText(
+        result.description || result.content,
+        "The source was discovered publicly, but no descriptive excerpt was returned.",
+      ),
+    };
+  });
+
+  const platformCount = new Set(sources.map((source) => source.platform)).size;
+  const datedCount = evidence.results.filter((result) => {
+    if (!result.publishedAt) return false;
+    return !Number.isNaN(new Date(result.publishedAt).getTime());
+  }).length;
+  const coverageScore = Math.min(94, 48 + sources.length * 4 + platformCount * 3);
+  const chronologyScore = Math.min(92, 42 + datedCount * 6 + sources.length * 2);
+  const coherenceScore = Math.min(
+    91,
+    50 + platformCount * 7 + Math.min(sources.length, 8) * 2,
+  );
+
+  record.signals = record.signals.map((signal) => {
+    if (signal.signal_key === "timeline_depth") {
+      return {
+        ...signal,
+        score: chronologyScore,
+        summary: `${datedCount} of ${sources.length} discovered sources include usable publication dates.`,
+      };
+    }
+    if (signal.signal_key === "cross_platform") {
+      return {
+        ...signal,
+        score: coherenceScore,
+        summary: `The public footprint was observed across ${platformCount} source categories.`,
+      };
+    }
+    if (signal.signal_key === "expertise_match") {
+      return {
+        ...signal,
+        score: coverageScore,
+        summary:
+          "Public results provide material for manual comparison against the submitted identity and expertise claims.",
+      };
+    }
+    return signal;
+  });
+
+  record.sources = sources;
+  record.timeline = sources
+    .map((source) => ({
+      id: `${source.id}-event`,
+      date: source.published_at,
+      platform: source.platform,
+      title: source.title,
+      summary: source.snippet,
+      url: source.url,
+    }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+  record.embeddings = record.embeddings.map((point, index) => {
+    const source = sources[index % sources.length];
+    return {
+      ...point,
+      platform: source.platform,
+      observed_at: source.published_at,
+      title: source.title,
+      snippet: source.snippet,
+      text_length: Math.max(120, source.snippet.length),
+    };
+  });
+
+  const primaryUrl = sources[0]?.url || input.website_url || "https://example.com";
+  record.claims = record.claims.map((claim, index) => ({
+    ...claim,
+    source_url: sources[index % sources.length]?.url || primaryUrl,
+  }));
+  record.consistency_score = calculateWeightedScore(record.signals);
+  record.confidence_band =
+    sources.length >= 8 && platformCount >= 3 ? "Moderate-high" : "Moderate";
+  record.classification =
+    record.consistency_score >= 81
+      ? "Strongly coherent public pattern"
+      : record.consistency_score >= 68
+        ? "Mostly coherent, verification advised"
+        : "Mixed evidence, manual review required";
+
+  if (narrative) {
+    record.dossier_summary = narrative.dossierSummary;
+    record.strengths = narrative.strengths;
+    record.concerns = narrative.concerns;
+    record.recommendations = narrative.recommendations;
+  } else {
+    record.dossier_summary = cleanText(
+      evidence.answer || "",
+      `${input.subject_name}'s dossier is based on ${sources.length} discovered public sources across ${platformCount} source categories. The evidence provides useful identity and chronology signals, but unresolved claims still require direct manual verification.`,
+      900,
+    );
+    record.strengths = [
+      `${sources.length} public sources were collected for review.`,
+      `Evidence spans ${platformCount} source categories rather than relying on a single profile.`,
+      "Source links remain attached to the dossier for manual verification.",
+    ];
+    record.concerns = [
+      `${sources.length - datedCount} sources did not provide a reliable publication date.`,
+      "Search-result similarity alone cannot conclusively establish identity ownership.",
+    ];
+    record.recommendations = [
+      "Open the highest-impact sources and verify ownership directly.",
+      "Compare the dated chronology with references and interview claims.",
+      "Treat the score as decision support rather than a final identity verdict.",
+    ];
+  }
+
+  record.counters = {
+    ...record.counters,
+    sources: sources.length,
+    platforms: platformCount,
+    timelineEvents: record.timeline.length,
+    claims: record.claims.length,
+    writingSamples: record.embeddings.length,
+  };
+
+  return record;
 };

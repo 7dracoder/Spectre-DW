@@ -157,12 +157,14 @@ const InvestigatePage = () => {
 
       <form onSubmit={handleSubmit} className="space-y-7">
         <Field
+          htmlFor="subject-name"
           label="Full name"
           required
           error={errors.subject_name}
           hint="The person's full or commonly used public name."
         >
           <Input
+            id="subject-name"
             value={form.subject_name}
             onChange={(event) => set("subject_name", event.target.value)}
             placeholder="Jane Doe"
@@ -171,15 +173,21 @@ const InvestigatePage = () => {
         </Field>
 
         <div className="grid gap-5 md:grid-cols-2">
-          <Field label="GitHub username" error={errors.github_username}>
+          <Field
+            htmlFor="github-username"
+            label="GitHub username"
+            error={errors.github_username}
+          >
             <Input
+              id="github-username"
               value={form.github_username}
               onChange={(event) => set("github_username", event.target.value)}
               placeholder="janedoe"
             />
           </Field>
-          <Field label="X / Twitter handle">
+          <Field htmlFor="x-handle" label="X / Twitter handle">
             <Input
+              id="x-handle"
               value={form.x_handle}
               onChange={(event) => set("x_handle", event.target.value)}
               placeholder="@janedoe"
@@ -187,8 +195,13 @@ const InvestigatePage = () => {
           </Field>
         </div>
 
-        <Field label="Personal website" error={errors.website_url}>
+        <Field
+          htmlFor="website-url"
+          label="Personal website"
+          error={errors.website_url}
+        >
           <Input
+            id="website-url"
             value={form.website_url}
             onChange={(event) => set("website_url", event.target.value)}
             placeholder="https://janedoe.com"
@@ -197,16 +210,26 @@ const InvestigatePage = () => {
         </Field>
 
         <div className="grid gap-5 md:grid-cols-2">
-          <Field label="LinkedIn URL" error={errors.linkedin_url}>
+          <Field
+            htmlFor="linkedin-url"
+            label="LinkedIn URL"
+            error={errors.linkedin_url}
+          >
             <Input
+              id="linkedin-url"
               value={form.linkedin_url}
               onChange={(event) => set("linkedin_url", event.target.value)}
               placeholder="https://linkedin.com/in/janedoe"
               type="url"
             />
           </Field>
-          <Field label="Other public profile" error={errors.other_profile_url}>
+          <Field
+            htmlFor="other-profile-url"
+            label="Other public profile"
+            error={errors.other_profile_url}
+          >
             <Input
+              id="other-profile-url"
               value={form.other_profile_url}
               onChange={(event) => set("other_profile_url", event.target.value)}
               placeholder="https://substack.com/@janedoe"
@@ -215,9 +238,14 @@ const InvestigatePage = () => {
           </Field>
         </div>
 
-        <Field label="Investigation context" required error={errors.context}>
+        <Field
+          htmlFor="investigation-context"
+          label="Investigation context"
+          required
+          error={errors.context}
+        >
           <Select value={form.context} onValueChange={(value) => set("context", value)}>
-            <SelectTrigger>
+            <SelectTrigger id="investigation-context">
               <SelectValue placeholder="Why are you investigating?" />
             </SelectTrigger>
             <SelectContent>
@@ -230,8 +258,13 @@ const InvestigatePage = () => {
           </Select>
         </Field>
 
-        <Field label="Notes" hint="Optional context or claims you want the dossier to examine.">
+        <Field
+          htmlFor="investigation-notes"
+          label="Notes"
+          hint="Optional context or claims you want the dossier to examine."
+        >
           <Textarea
+            id="investigation-notes"
             value={form.notes}
             onChange={(event) => set("notes", event.target.value)}
             placeholder="Claims eight years of React experience and a senior role since 2022."
@@ -277,12 +310,14 @@ const InvestigatePage = () => {
 };
 
 const Field = ({
+  htmlFor,
   label,
   required,
   error,
   hint,
   children,
 }: {
+  htmlFor?: string;
   label: string;
   required?: boolean;
   error?: string;
@@ -290,9 +325,16 @@ const Field = ({
   children: React.ReactNode;
 }) => (
   <div className="space-y-1.5">
-    <Label className="flex items-center gap-1 text-xs font-medium">
+    <Label
+      htmlFor={htmlFor}
+      className="flex items-center gap-1 text-xs font-medium"
+    >
       {label}
-      {required && <span className="text-primary">*</span>}
+      {required && (
+        <span aria-hidden="true" className="text-primary">
+          *
+        </span>
+      )}
     </Label>
     {children}
     {hint && !error && <p className="text-xs text-muted-foreground">{hint}</p>}

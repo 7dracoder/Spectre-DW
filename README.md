@@ -11,6 +11,10 @@ consistency dossier and an interactive writing fingerprint.
 - SpacetimeDB module with typed tables, reducers, procedures, and generated
   TypeScript bindings.
 - Owner-only private provider configuration in SpacetimeDB.
+- Live public-source discovery with evidence links and dated-source coverage.
+- Structured dossier synthesis with a deterministic fallback when a provider
+  is temporarily unavailable.
+- Tower completion runs for investigation audit and workflow visibility.
 - ElevenLabs voice investigator with microphone controls, dossier context,
   short-lived WebRTC authentication, and voice-session audit rows.
 - Browser voice briefing fallback while demo mode is enabled.
@@ -67,7 +71,12 @@ spacetime call --server local spectre-dw configure_provider $name $value
 
 Do not prefix provider credentials with `VITE_`; Vite-prefixed values are
 exposed to browser code. Use the same owner-only reducer for the Nimble,
-RunPod, Tower, and Gemini placeholders listed in `.env.example`.
+RunPod, and Tower placeholders listed in `.env.example`.
+
+SpacetimeDB procedures keep those credentials server-side, perform external
+requests, and persist the resulting dossier. SpacetimeDB does not currently
+provide an application-facing foundation-model inference API, so RunPod is the
+configured synthesis provider.
 
 ## ElevenLabs Agent
 
@@ -76,9 +85,5 @@ Create a private ElevenLabs agent, then use
 system prompt. The app supplies dynamic dossier fields and sends the full
 evidence context when each conversation connects.
 
-## Stack
-
-- Vite, React, TypeScript
-- Tailwind CSS and shadcn/ui
-- SpacetimeDB
-- ElevenLabs Agents
+The minimum dashboard permissions and privacy settings are documented in
+[`docs/elevenlabs-setup.md`](docs/elevenlabs-setup.md).
