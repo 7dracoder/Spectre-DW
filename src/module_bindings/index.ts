@@ -36,16 +36,20 @@ import {
 // Import all reducer arg schemas
 import ConfigureProviderReducer from "./configure_provider_reducer";
 import CreateInvestigationReducer from "./create_investigation_reducer";
+import DeleteInvestigationReducer from "./delete_investigation_reducer";
 import FinishVoiceSessionReducer from "./finish_voice_session_reducer";
 import StartVoiceSessionReducer from "./start_voice_session_reducer";
 
 // Import all procedure arg schemas
+import * as AskInvestigationProcedure from "./ask_investigation_procedure";
 import * as GetElevenlabsConversationTokenProcedure from "./get_elevenlabs_conversation_token_procedure";
+import * as GetInvestigationOperationsProcedure from "./get_investigation_operations_procedure";
 import * as RunInvestigationProcedure from "./run_investigation_procedure";
 
 // Import all table schema definitions
 import ClaimsRow from "./claims_table";
 import EmbeddingsRow from "./embeddings_table";
+import IntegrationRunsRow from "./integration_runs_table";
 import InvestigationsRow from "./investigations_table";
 import SignalsRow from "./signals_table";
 import SourceDocumentsRow from "./source_documents_table";
@@ -83,6 +87,23 @@ const tablesSchema = __schema({
       { name: 'embeddings_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, EmbeddingsRow),
+  integrationRuns: __table({
+    name: 'integration_runs',
+    indexes: [
+      { accessor: 'id', name: 'integration_runs_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'investigationId', name: 'integration_runs_investigation_id_idx_btree', algorithm: 'btree', columns: [
+        'investigationId',
+      ] },
+      { accessor: 'owner', name: 'integration_runs_owner_idx_btree', algorithm: 'btree', columns: [
+        'owner',
+      ] },
+    ],
+    constraints: [
+      { name: 'integration_runs_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, IntegrationRunsRow),
   investigations: __table({
     name: 'investigations',
     indexes: [
@@ -148,13 +169,16 @@ const tablesSchema = __schema({
 const reducersSchema = __reducers(
   __reducerSchema("configure_provider", ConfigureProviderReducer),
   __reducerSchema("create_investigation", CreateInvestigationReducer),
+  __reducerSchema("delete_investigation", DeleteInvestigationReducer),
   __reducerSchema("finish_voice_session", FinishVoiceSessionReducer),
   __reducerSchema("start_voice_session", StartVoiceSessionReducer),
 );
 
 /** The schema information for all procedures in this module. This is defined the same way as the procedures would have been defined in the server. */
 const proceduresSchema = __procedures(
+  __procedureSchema("ask_investigation", AskInvestigationProcedure.params, AskInvestigationProcedure.returnType),
   __procedureSchema("get_elevenlabs_conversation_token", GetElevenlabsConversationTokenProcedure.params, GetElevenlabsConversationTokenProcedure.returnType),
+  __procedureSchema("get_investigation_operations", GetInvestigationOperationsProcedure.params, GetInvestigationOperationsProcedure.returnType),
   __procedureSchema("run_investigation", RunInvestigationProcedure.params, RunInvestigationProcedure.returnType),
 );
 

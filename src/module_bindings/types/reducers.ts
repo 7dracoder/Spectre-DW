@@ -8,10 +8,12 @@ import { type Infer as __Infer } from "spacetimedb";
 // Import all reducer arg schemas
 import ConfigureProviderReducer from "../configure_provider_reducer";
 import CreateInvestigationReducer from "../create_investigation_reducer";
+import DeleteInvestigationReducer from "../delete_investigation_reducer";
 import FinishVoiceSessionReducer from "../finish_voice_session_reducer";
 import StartVoiceSessionReducer from "../start_voice_session_reducer";
 
 export type ConfigureProviderParams = __Infer<typeof ConfigureProviderReducer>;
 export type CreateInvestigationParams = __Infer<typeof CreateInvestigationReducer>;
+export type DeleteInvestigationParams = __Infer<typeof DeleteInvestigationReducer>;
 export type FinishVoiceSessionParams = __Infer<typeof FinishVoiceSessionReducer>;
 export type StartVoiceSessionParams = __Infer<typeof StartVoiceSessionReducer>;

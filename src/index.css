@@ -273,6 +273,28 @@
   100% { offset-distance: 100%; }
 }
 
+@keyframes report-scan {
+  0% { transform: translateY(0); opacity: 0; }
+  12% { opacity: 0.85; }
+  88% { opacity: 0.45; }
+  100% { transform: translateY(320px); opacity: 0; }
+}
+
+@keyframes voice-wave {
+  0%, 100% { transform: scaleY(0.35); opacity: 0.45; }
+  50% { transform: scaleY(1); opacity: 1; }
+}
+
+@keyframes timeline-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 hsl(var(--primary) / 0.24); }
+  50% { box-shadow: 0 0 0 8px hsl(var(--primary) / 0); }
+}
+
+@keyframes operation-route {
+  0% { clip-path: inset(0 100% 0 0); }
+  55%, 100% { clip-path: inset(0 0 0 0); }
+}
+
 /* === NOTION-STYLE CARD === */
 .glass-card {
   background: hsl(var(--card));
@@ -288,7 +310,7 @@
   border-color: hsl(var(--border));
 }
 
-/* Brand text — simple foreground */
+/* Brand text: simple foreground */
 .animated-brand-gradient {
   color: hsl(var(--foreground));
 }
@@ -310,4 +332,31 @@
   border: 1px solid hsl(var(--border));
   border-radius: var(--radius);
   box-shadow: 0 1px 3px hsl(0 0% 0% / 0.04);
+}
+
+.report-scan-line {
+  animation: report-scan 5.5s var(--ease-in-out-cubic) infinite;
+}
+
+.voice-wave-bar {
+  transform-origin: center;
+  animation: voice-wave 760ms ease-in-out infinite;
+}
+
+.timeline-active-dot {
+  animation: timeline-pulse 1.8s ease-out infinite;
+}
+
+.operation-route {
+  animation: operation-route 4.8s var(--ease-in-out-cubic) infinite;
+  transform-origin: left;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .report-scan-line,
+  .voice-wave-bar,
+  .timeline-active-dot,
+  .operation-route {
+    animation: none !important;
+  }
 }

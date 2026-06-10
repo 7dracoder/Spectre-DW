@@ -25,5 +25,5 @@ default = "0"
 
 [[parameters]]
 name = "consistency_score"
-description = "Computed human consistency score"
+description = "Computed public evidence consistency score"
 default = "0"

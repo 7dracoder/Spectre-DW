@@ -24,6 +24,22 @@ export const Embeddings = __t.object("Embeddings", {
 });
 export type Embeddings = __Infer<typeof Embeddings>;
 
+export const IntegrationRuns = __t.object("IntegrationRuns", {
+  id: __t.string(),
+  investigationId: __t.string(),
+  owner: __t.identity(),
+  capability: __t.string(),
+  provider: __t.string(),
+  status: __t.string(),
+  detail: __t.string(),
+  metric: __t.string(),
+  durationMs: __t.u32(),
+  externalRef: __t.string(),
+  startedAt: __t.string(),
+  completedAt: __t.string(),
+});
+export type IntegrationRuns = __Infer<typeof IntegrationRuns>;
+
 export const Investigations = __t.object("Investigations", {
   id: __t.string(),
   owner: __t.identity(),

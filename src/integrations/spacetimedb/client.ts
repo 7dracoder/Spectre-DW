@@ -39,6 +39,7 @@ const subscribe = (connection: DbConnection) =>
         "SELECT * FROM claims",
         "SELECT * FROM embeddings",
         "SELECT * FROM voice_sessions",
+        "SELECT * FROM integration_runs",
       ]);
   });
 
