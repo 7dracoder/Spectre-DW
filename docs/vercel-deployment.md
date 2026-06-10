@@ -43,7 +43,8 @@ npm run check
 The repository's `.vercelignore` excludes backend source, local database state,
 documentation, and Tower workflow files from CLI deployment uploads. Generated
 SpacetimeDB client bindings remain under `src/module_bindings` and are included
-in the web build.
+in the web build. Root-anchored exclusions deliberately preserve
+`src/integrations/spacetimedb`, which is required by the browser application.
 
 ## Domain
 

@@ -14,7 +14,15 @@ dist
 dist-ssr
 spacetimedb/dist
 .spacetime-data
-*.local
+coverage
+playwright-report
+test-results
+.cache
+.vercel
+
+# Local environment and credentials
+.env
+.env.*
 
 # Editor directories and files
 .vscode/*

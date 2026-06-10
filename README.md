@@ -95,8 +95,13 @@ npm ci
 npm run dev
 ```
 
-Default `.env.example` values enable local demo mode. Copy only public
-connection values into a local `.env.local`.
+Create `.env.local` for local browser configuration:
+
+```env
+VITE_DEMO_MODE="true"
+VITE_SPACETIMEDB_URI="http://127.0.0.1:3000"
+VITE_SPACETIMEDB_DATABASE="spectre-dw"
+```
 
 ## Quality Gates
 
@@ -131,8 +136,10 @@ VITE_SPACETIMEDB_DATABASE="spectre-dw"
 Provider keys belong in owner-only SpacetimeDB configuration. Never prefix a
 provider credential with `VITE_`.
 
-Required provider placeholders are documented in [`.env.example`](.env.example).
-Deployment settings are in
+Private provider configuration keys are `NIMBLE_API_KEY`, `RUNPOD_API_KEY`,
+`RUNPOD_TEXT_MODEL`, `RUNPOD_FALLBACK_MODEL`, `TOWER_API_KEY`,
+`TOWER_APP_NAME`, `TOWER_ENVIRONMENT`, `ELEVENLABS_API_KEY`, and
+`ELEVENLABS_AGENT_ID`. Deployment settings are in
 [`docs/vercel-deployment.md`](docs/vercel-deployment.md), and ElevenLabs agent
 permissions are in [`docs/elevenlabs-setup.md`](docs/elevenlabs-setup.md).
 
