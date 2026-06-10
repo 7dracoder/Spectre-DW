@@ -302,8 +302,8 @@ export const buildInvestigationRecord = (
     confidence_band: "Moderate-high",
     classification:
       score >= 81
-        ? "High confidence human pattern"
-        : "Mostly organic, minor anomalies",
+        ? "Strong sample evidence alignment"
+        : "Mixed sample evidence alignment",
     dossier_summary:
       `${subject}'s public footprint shows a gradual, multi-year pattern with meaningful variation across technical, formal, and casual contexts. ` +
       "The strongest evidence is timeline depth and cross-platform coherence. A concentrated recent publishing burst and one thinly supported expertise claim merit manual review, but the overall pattern is more consistent with an evolving person than an identity assembled all at once.",
@@ -329,6 +329,117 @@ export const buildInvestigationRecord = (
   };
 };
 
+export const buildInsufficientInvestigationRecord = (
+  input: InvestigationInput,
+  id: string,
+  owner: string,
+  createdAt: string,
+) => {
+  const record = buildInvestigationRecord(input, id, owner, createdAt);
+  const submittedClaims = [
+    input.github_username
+      ? `Submitted GitHub identifier @${input.github_username.replace(/^@/, "")}`
+      : "",
+    input.x_handle
+      ? `Submitted X identifier @${input.x_handle.replace(/^@/, "")}`
+      : "",
+    input.linkedin_url ? "Submitted LinkedIn profile" : "",
+    input.website_url ? "Submitted website" : "",
+    input.other_profile_url ? "Submitted additional profile" : "",
+  ].filter(Boolean);
+
+  record.sources = [];
+  record.timeline = [];
+  record.embeddings = [];
+  record.signals = [
+    {
+      id: `${id}-signal-identity`,
+      signal_key: "identity_match",
+      title: "Identity anchor match",
+      summary: "No retrieved public source met the minimum identity-match threshold.",
+      score: 10,
+      weight: 40,
+      polarity: "concern",
+    },
+    {
+      id: `${id}-signal-quality`,
+      signal_key: "source_quality",
+      title: "Source quality",
+      summary: "No independently retained source was available for quality assessment.",
+      score: 10,
+      weight: 25,
+      polarity: "concern",
+    },
+    {
+      id: `${id}-signal-timeline`,
+      signal_key: "timeline_depth",
+      title: "Chronology coverage",
+      summary: "No reliable publication dates were retained.",
+      score: 5,
+      weight: 20,
+      polarity: "concern",
+    },
+    {
+      id: `${id}-signal-diversity`,
+      signal_key: "evidence_diversity",
+      title: "Evidence diversity",
+      summary: "No verified cross-source comparison was possible.",
+      score: 5,
+      weight: 15,
+      polarity: "concern",
+    },
+  ];
+  record.claims = submittedClaims.map((claim, index) => ({
+    id: `${id}-claim-${index + 1}`,
+    claim_type: "submitted-identifier",
+    claim_text: claim,
+    support_level: "unresolved",
+    evidence:
+      "The identifier was submitted for review, but no sufficiently matched public source was retained.",
+    source_url: "",
+  }));
+  record.consistency_score = calculateWeightedScore(record.signals);
+  record.confidence_band = "Low";
+  record.classification = "Insufficient verified public evidence";
+  record.dossier_summary = `${input.subject_name}'s submitted identifiers were retained, but public discovery did not return evidence with a strong enough identity match for a reliable consistency assessment. No ownership, authorship, chronology, or cross-profile continuity conclusion should be drawn from this dossier.`;
+  record.strengths = [
+    "Submitted identifiers remain available for direct manual verification.",
+    "Weakly matched search results were excluded instead of being treated as evidence.",
+  ];
+  record.concerns = [
+    "No public source met the identity-match threshold.",
+    "The dossier cannot assess chronology, source continuity, or ownership.",
+  ];
+  record.recommendations = [
+    "Verify each submitted profile URL directly with the subject.",
+    "Add exact profile URLs or a verified personal domain, then run the investigation again.",
+    "Do not use this dossier for a consequential decision.",
+  ];
+  return {
+    ...record,
+    evidence_confidence_score: 8,
+    confidence_rationale: [
+      "No independently retained source.",
+      "No reliable publication-date coverage.",
+      "No cross-source corroboration.",
+    ],
+    contradictions: [],
+    limitations: [
+      "Search snippets can omit context and do not prove account ownership.",
+      "No content-level authorship or contradiction analysis was possible.",
+    ],
+    methodology_version: "public-evidence-v2",
+    counters: {
+      sources: 0,
+      platforms: 0,
+      timelineEvents: 0,
+      claims: record.claims.length,
+      writingSamples: 0,
+      clusters: 0,
+    },
+  };
+};
+
 const cleanText = (value: string, fallback: string, maxLength = 360) => {
   const normalized = value.replace(/\s+/g, " ").trim();
   if (!normalized) return fallback;
@@ -338,30 +449,32 @@ const cleanText = (value: string, fallback: string, maxLength = 360) => {
 };
 
 const classifySource = (result: PublicEvidenceResult) => {
-  try {
-    const hostname = new URL(result.url).hostname.replace(/^www\./, "");
-    if (hostname === "github.com") {
-      return { platform: "GitHub", sourceType: "repository" };
-    }
-    if (hostname.endsWith("linkedin.com")) {
-      return { platform: "LinkedIn", sourceType: "profile" };
-    }
-    if (hostname === "x.com" || hostname === "twitter.com") {
-      return { platform: "X", sourceType: "post" };
-    }
-    if (hostname.endsWith("youtube.com") || hostname === "youtu.be") {
-      return { platform: "YouTube", sourceType: "media" };
-    }
-    return { platform: "Website", sourceType: "webpage" };
-  } catch {
-    return { platform: "Website", sourceType: "webpage" };
+  const hostname = result.url
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\//, "")
+    .replace(/^www\./, "")
+    .split(/[/?#]/, 1)[0]
+    .split(":", 1)[0];
+  if (hostname === "github.com") {
+    return { platform: "GitHub", sourceType: "repository" };
   }
+  if (hostname.endsWith("linkedin.com")) {
+    return { platform: "LinkedIn", sourceType: "profile" };
+  }
+  if (hostname === "x.com" || hostname === "twitter.com") {
+    return { platform: "X", sourceType: "post" };
+  }
+  if (hostname.endsWith("youtube.com") || hostname === "youtu.be") {
+    return { platform: "YouTube", sourceType: "media" };
+  }
+  return { platform: "Website", sourceType: "webpage" };
 };
 
-const normalizePublishedAt = (value: string | undefined, fallback: string) => {
-  if (!value) return fallback;
+const normalizePublishedAt = (value: string | undefined) => {
+  if (!value) return "";
   const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? fallback : parsed.toISOString();
+  return Number.isNaN(parsed.getTime()) ? "" : parsed.toISOString();
 };
 
 const calculateWeightedScore = (
@@ -386,7 +499,12 @@ export const buildLiveInvestigationRecord = (
   evidence: PublicEvidence,
   narrative?: InvestigationNarrative | null,
 ) => {
-  const record = buildInvestigationRecord(input, id, owner, createdAt);
+  const record = buildInsufficientInvestigationRecord(
+    input,
+    id,
+    owner,
+    createdAt,
+  );
   const sources = evidence.results.slice(0, 10).map((result, index) => {
     const classification = classifySource(result);
     return {
@@ -399,54 +517,103 @@ export const buildLiveInvestigationRecord = (
         `${input.subject_name} public source ${index + 1}`,
         160,
       ),
-      published_at: normalizePublishedAt(result.publishedAt, createdAt),
+      published_at: normalizePublishedAt(result.publishedAt),
       snippet: cleanText(
         result.description || result.content,
         "The source was discovered publicly, but no descriptive excerpt was returned.",
       ),
+      identity_match_score: result.identityScore,
+      source_quality_score: result.qualityScore,
+      date_confidence: result.dateConfidence,
+      matched_anchors: result.matchedAnchors,
     };
   });
 
   const platformCount = new Set(sources.map((source) => source.platform)).size;
-  const datedCount = evidence.results.filter((result) => {
-    if (!result.publishedAt) return false;
-    return !Number.isNaN(new Date(result.publishedAt).getTime());
-  }).length;
-  const coverageScore = Math.min(94, 48 + sources.length * 4 + platformCount * 3);
-  const chronologyScore = Math.min(92, 42 + datedCount * 6 + sources.length * 2);
-  const coherenceScore = Math.min(
-    91,
-    50 + platformCount * 7 + Math.min(sources.length, 8) * 2,
+  const datedSources = sources.filter((source) => Boolean(source.published_at));
+  const datedCount = datedSources.length;
+  const average = (values: number[]) =>
+    values.length
+      ? values.reduce((sum, value) => sum + value, 0) / values.length
+      : 0;
+  const identityScore = Math.round(
+    average(sources.map((source) => source.identity_match_score)),
+  );
+  const sourceQualityScore = Math.round(
+    average(sources.map((source) => source.source_quality_score)),
+  );
+  const chronologyScore = Math.round(
+    15 +
+      (datedCount / Math.max(1, sources.length)) * 55 +
+      Math.min(20, datedCount * 4),
+  );
+  const anchorCoverage = Math.round(
+    (evidence.matchedAnchors.length /
+      Math.max(1, evidence.submittedAnchors.length)) *
+      100,
+  );
+  const diversityScore = Math.round(
+    Math.min(70, platformCount * 20) +
+      Math.min(30, sources.length * 5),
   );
 
-  record.signals = record.signals.map((signal) => {
-    if (signal.signal_key === "timeline_depth") {
-      return {
-        ...signal,
-        score: chronologyScore,
-        summary: `${datedCount} of ${sources.length} discovered sources include usable publication dates.`,
-      };
-    }
-    if (signal.signal_key === "cross_platform") {
-      return {
-        ...signal,
-        score: coherenceScore,
-        summary: `The public footprint was observed across ${platformCount} source categories.`,
-      };
-    }
-    if (signal.signal_key === "expertise_match") {
-      return {
-        ...signal,
-        score: coverageScore,
-        summary:
-          "Public results provide material for manual comparison against the submitted identity and expertise claims.",
-      };
-    }
-    return signal;
-  });
+  record.signals = [
+    {
+      id: `${id}-signal-identity`,
+      signal_key: "identity_match",
+      title: "Identity anchor match",
+      summary: `${evidence.matchedAnchors.length} of ${evidence.submittedAnchors.length} submitted identity anchors matched retained sources.`,
+      score: identityScore,
+      weight: 40,
+      polarity: identityScore >= 75 ? "positive" : identityScore >= 50 ? "mixed" : "concern",
+    },
+    {
+      id: `${id}-signal-quality`,
+      signal_key: "source_quality",
+      title: "Source quality",
+      summary:
+        "Quality favors exact submitted URLs and first-party profile matches over generic search mentions.",
+      score: sourceQualityScore,
+      weight: 25,
+      polarity:
+        sourceQualityScore >= 75
+          ? "positive"
+          : sourceQualityScore >= 55
+            ? "mixed"
+            : "concern",
+    },
+    {
+      id: `${id}-signal-timeline`,
+      signal_key: "timeline_depth",
+      title: "Chronology coverage",
+      summary: `${datedCount} of ${sources.length} retained sources include a usable reported publication date.`,
+      score: chronologyScore,
+      weight: 20,
+      polarity:
+        chronologyScore >= 70
+          ? "positive"
+          : chronologyScore >= 45
+            ? "mixed"
+            : "concern",
+    },
+    {
+      id: `${id}-signal-diversity`,
+      signal_key: "evidence_diversity",
+      title: "Evidence diversity",
+      summary: `${sources.length} retained sources span ${platformCount} source ${platformCount === 1 ? "category" : "categories"}.`,
+      score: diversityScore,
+      weight: 15,
+      polarity:
+        diversityScore >= 70
+          ? "positive"
+          : diversityScore >= 45
+            ? "mixed"
+            : "concern",
+    },
+  ];
 
   record.sources = sources;
-  record.timeline = sources
+  record.timeline = datedSources
     .map((source) => ({
       id: `${source.id}-event`,
       date: source.published_at,
@@ -456,59 +623,120 @@ export const buildLiveInvestigationRecord = (
       url: source.url,
     }))
     .sort((a, b) => a.date.localeCompare(b.date));
-  record.embeddings = record.embeddings.map((point, index) => {
-    const source = sources[index % sources.length];
+  record.embeddings = [];
+
+  const findAnchorSource = (prefixes: string[]) =>
+    sources.find((source) =>
+      source.matched_anchors.some((anchor) =>
+        prefixes.some((prefix) => anchor.startsWith(prefix)),
+      ),
+    );
+  const claimInputs = [
+    input.github_username
+      ? {
+          type: "github-identifier",
+          text: `Submitted GitHub identifier @${input.github_username.replace(/^@/, "")} appears in retained evidence.`,
+          prefixes: ["github:", "url:github.com/"],
+          fallbackUrl: `https://github.com/${input.github_username.replace(/^@/, "")}`,
+        }
+      : null,
+    input.x_handle
+      ? {
+          type: "x-identifier",
+          text: `Submitted X identifier @${input.x_handle.replace(/^@/, "")} appears in retained evidence.`,
+          prefixes: ["x:", "url:x.com/", "url:twitter.com/"],
+          fallbackUrl: `https://x.com/${input.x_handle.replace(/^@/, "")}`,
+        }
+      : null,
+    input.linkedin_url
+      ? {
+          type: "linkedin-profile",
+          text: "Submitted LinkedIn profile appears in retained evidence.",
+          prefixes: ["linkedin:"],
+          fallbackUrl: input.linkedin_url,
+        }
+      : null,
+    input.website_url
+      ? {
+          type: "website",
+          text: "Submitted website domain appears in retained evidence.",
+          prefixes: ["website:", "domain:"],
+          fallbackUrl: input.website_url,
+        }
+      : null,
+  ].filter(Boolean) as Array<{
+    type: string;
+    text: string;
+    prefixes: string[];
+    fallbackUrl: string;
+  }>;
+
+  record.claims = claimInputs.map((claim, index) => {
+    const source = findAnchorSource(claim.prefixes);
     return {
-      ...point,
-      platform: source.platform,
-      observed_at: source.published_at,
-      title: source.title,
-      snippet: source.snippet,
-      text_length: Math.max(120, source.snippet.length),
+      id: `${id}-claim-${index + 1}`,
+      claim_type: claim.type,
+      claim_text: claim.text,
+      support_level: source ? ("supported" as const) : ("unresolved" as const),
+      evidence: source
+        ? `Matched retained source: ${source.title}. This confirms retrieval alignment, not account ownership.`
+        : "No retained source matched this submitted identifier strongly enough.",
+      source_url: source?.url || claim.fallbackUrl,
     };
   });
-
-  const primaryUrl = sources[0]?.url || input.website_url || "https://example.com";
-  record.claims = record.claims.map((claim, index) => ({
-    ...claim,
-    source_url: sources[index % sources.length]?.url || primaryUrl,
-  }));
+  record.claims.push({
+    id: `${id}-claim-continuity`,
+    claim_type: "identity-continuity",
+    claim_text: "All retained profiles are controlled by the same person.",
+    support_level: "unresolved",
+    evidence:
+      "Public search alignment cannot prove common control. Direct ownership verification is still required.",
+    source_url: sources[0]?.url || "",
+  });
   record.consistency_score = calculateWeightedScore(record.signals);
+  const evidenceConfidenceScore = Math.round(
+    identityScore * 0.35 +
+      sourceQualityScore * 0.2 +
+      Math.min(100, sources.length * 15) * 0.1 +
+      anchorCoverage * 0.1 +
+      chronologyScore * 0.15 +
+      diversityScore * 0.1,
+  );
   record.confidence_band =
-    sources.length >= 8 && platformCount >= 3 ? "Moderate-high" : "Moderate";
+    evidenceConfidenceScore >= 78
+      ? "High"
+      : evidenceConfidenceScore >= 58
+        ? "Moderate"
+        : "Low";
   record.classification =
-    record.consistency_score >= 81
-      ? "Strongly coherent public pattern"
-      : record.consistency_score >= 68
-        ? "Mostly coherent, verification advised"
-        : "Mixed evidence, manual review required";
+    evidenceConfidenceScore >= 78 && record.consistency_score >= 75
+      ? "Strong public-evidence alignment, ownership unverified"
+      : evidenceConfidenceScore >= 55
+        ? "Partial public-evidence alignment, verification required"
+        : "Limited verified public evidence";
 
-  if (narrative) {
-    record.dossier_summary = narrative.dossierSummary;
-    record.strengths = narrative.strengths;
-    record.concerns = narrative.concerns;
-    record.recommendations = narrative.recommendations;
-  } else {
-    record.dossier_summary = cleanText(
-      evidence.answer || "",
-      `${input.subject_name}'s dossier is based on ${sources.length} discovered public sources across ${platformCount} source categories. The evidence provides useful identity and chronology signals, but unresolved claims still require direct manual verification.`,
-      900,
-    );
-    record.strengths = [
-      `${sources.length} public sources were collected for review.`,
-      `Evidence spans ${platformCount} source categories rather than relying on a single profile.`,
-      "Source links remain attached to the dossier for manual verification.",
-    ];
-    record.concerns = [
-      `${sources.length - datedCount} sources did not provide a reliable publication date.`,
-      "Search-result similarity alone cannot conclusively establish identity ownership.",
-    ];
-    record.recommendations = [
-      "Open the highest-impact sources and verify ownership directly.",
-      "Compare the dated chronology with references and interview claims.",
-      "Treat the score as decision support rather than a final identity verdict.",
-    ];
-  }
+  record.dossier_summary = `${input.subject_name}'s dossier retains ${sources.length} public sources across ${platformCount} source ${platformCount === 1 ? "category" : "categories"} after identity-match filtering. Match scores describe alignment with submitted identifiers, not proof of ownership. ${datedCount} sources include usable reported dates. Direct verification remains required for cross-profile control and consequential decisions.`;
+  record.strengths = [
+    `${sources.length} sources passed the minimum identity-match threshold.`,
+    `${evidence.matchedAnchors.length} identity checks matched retained evidence.`,
+    "Each retained source preserves its URL, excerpt, match score, quality score, and date confidence.",
+  ];
+  record.concerns = [
+    `${sources.length - datedCount} sources did not provide a reliable publication date.`,
+    `${evidence.unmatchedAnchors.length} identity checks remain unmatched.`,
+    "Search-result alignment cannot establish account ownership or common control.",
+  ];
+  record.recommendations = [
+    "Open the highest-impact sources and verify ownership directly.",
+    "Compare any dated chronology with references and interview claims.",
+    "Treat the score as decision support rather than a final identity verdict.",
+  ];
+
+  const limitations = [
+    "Search excerpts may omit page context and can become stale.",
+    "Reported publication dates were not independently verified.",
+    "No authorship fingerprint was generated from search snippets.",
+  ];
 
   record.counters = {
     ...record.counters,
@@ -516,8 +744,21 @@ export const buildLiveInvestigationRecord = (
     platforms: platformCount,
     timelineEvents: record.timeline.length,
     claims: record.claims.length,
-    writingSamples: record.embeddings.length,
+    writingSamples: 0,
+    clusters: 0,
   };
 
-  return record;
+  return {
+    ...record,
+    evidence_confidence_score: evidenceConfidenceScore,
+    confidence_rationale: [
+      `Average identity match: ${identityScore}/100.`,
+      `Average source quality: ${sourceQualityScore}/100.`,
+      `Submitted anchor coverage: ${anchorCoverage}%.`,
+      `Dated source coverage: ${datedCount}/${sources.length}.`,
+    ],
+    contradictions: [],
+    limitations,
+    methodology_version: "public-evidence-v2",
+  };
 };

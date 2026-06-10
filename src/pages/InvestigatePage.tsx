@@ -1,7 +1,15 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
-import { ArrowRight, FlaskConical, Loader2 } from "lucide-react";
+import {
+  ArrowRight,
+  CheckCircle2,
+  CircleDotDashed,
+  FlaskConical,
+  Loader2,
+  Radar,
+  ShieldCheck,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -79,6 +87,20 @@ const InvestigatePage = () => {
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const identifiers = [
+    ["GitHub", form.github_username],
+    ["X / Twitter", form.x_handle],
+    ["Website", form.website_url],
+    ["LinkedIn", form.linkedin_url],
+    ["Other profile", form.other_profile_url],
+  ].filter(([, value]) => Boolean(value.trim()));
+  const readiness = Math.min(
+    100,
+    (form.subject_name ? 20 : 0) +
+      identifiers.length * 12 +
+      (form.context ? 12 : 0) +
+      (form.notes ? 8 : 0),
+  );
 
   const set = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) =>
     setForm((current) => ({ ...current, [key]: value }));
@@ -125,7 +147,7 @@ const InvestigatePage = () => {
   };
 
   return (
-    <div className="mx-auto max-w-3xl py-10 md:py-14">
+    <div className="mx-auto max-w-6xl py-10 md:py-14">
       <header className="mb-10 grid gap-4 border-b border-border pb-8 md:grid-cols-[1fr_auto] md:items-end">
         <div>
           <p className="text-xs uppercase tracking-[0.2em] text-primary">New investigation</p>
@@ -155,7 +177,8 @@ const InvestigatePage = () => {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-7">
+      <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_310px]">
+        <form onSubmit={handleSubmit} className="space-y-7">
         <Field
           htmlFor="subject-name"
           label="Full name"
@@ -304,10 +327,107 @@ const InvestigatePage = () => {
             Start analysis
           </Button>
         </div>
-      </form>
+        </form>
+
+        <aside className="border border-border bg-card lg:sticky lg:top-24">
+          <div className="border-b border-border p-5">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.18em] text-primary">
+                  Review map
+                </p>
+                <h2 className="mt-2 text-xl font-medium">Coverage readiness</h2>
+              </div>
+              <Radar className="h-5 w-5 text-primary" />
+            </div>
+            <div className="mt-5 flex items-end justify-between">
+              <strong className="font-mono text-4xl font-medium">{readiness}</strong>
+              <span className="pb-1 text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+                readiness
+              </span>
+            </div>
+            <div className="mt-3 h-1 overflow-hidden bg-secondary">
+              <div
+                className="h-full bg-primary transition-[width] duration-500"
+                style={{ width: `${readiness}%` }}
+              />
+            </div>
+          </div>
+
+          <div className="border-b border-border p-5">
+            <p className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+              Identity anchors
+            </p>
+            <div className="mt-4 space-y-3">
+              {form.subject_name && (
+                <ReviewAnchor label="Subject" value={form.subject_name} />
+              )}
+              {identifiers.map(([label, value]) => (
+                <ReviewAnchor key={label} label={label} value={value} />
+              ))}
+              {!form.subject_name && identifiers.length === 0 && (
+                <p className="text-xs leading-5 text-muted-foreground">
+                  Add a name and public identifier to begin mapping the subject.
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="p-5">
+            <p className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+              Analysis sequence
+            </p>
+            <div className="mt-4 space-y-4">
+              <ReviewStage
+                complete={identifiers.length > 0}
+                label="Identity resolution"
+              />
+              <ReviewStage
+                complete={identifiers.length > 1}
+                label="Cross-source evidence"
+              />
+              <ReviewStage
+                complete={Boolean(form.context)}
+                label="Contextual assessment"
+              />
+              <ReviewStage complete={form.consent} label="Responsible-use check" />
+            </div>
+            <div className="mt-5 flex items-start gap-2 border-t border-border pt-4 text-[11px] leading-5 text-muted-foreground">
+              <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+              Public evidence stays linked to its source throughout the dossier.
+            </div>
+          </div>
+        </aside>
+      </div>
     </div>
   );
 };
+
+const ReviewAnchor = ({ label, value }: { label: string; value: string }) => (
+  <div className="grid grid-cols-[76px_1fr] gap-3 text-xs">
+    <span className="text-muted-foreground">{label}</span>
+    <span className="truncate font-mono text-[11px]">{value}</span>
+  </div>
+);
+
+const ReviewStage = ({
+  complete,
+  label,
+}: {
+  complete: boolean;
+  label: string;
+}) => (
+  <div className="flex items-center gap-3">
+    {complete ? (
+      <CheckCircle2 className="h-4 w-4 text-success-primary" />
+    ) : (
+      <CircleDotDashed className="h-4 w-4 text-muted-foreground" />
+    )}
+    <span className={complete ? "text-xs" : "text-xs text-muted-foreground"}>
+      {label}
+    </span>
+  </div>
+);
 
 const Field = ({
   htmlFor,

@@ -1,17 +1,21 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
+  Activity,
   ArrowRight,
   CheckCircle2,
   FileSearch,
   FlaskConical,
+  Gauge,
   Loader2,
   Plus,
   Search,
   ShieldCheck,
+  TrendingUp,
   UserCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import DeleteDossierButton from "@/components/specter/DeleteDossierButton";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
 import { createFeaturedDemo } from "@/lib/investigationStore";
@@ -59,6 +63,26 @@ const InvestigationsListPage = () => {
       return matchesQuery && matchesStatus;
     });
   }, [query, rows, statusFilter]);
+  const workspaceMetrics = useMemo(() => {
+    const complete = rows.filter((row) => row.status === "complete");
+    const active = rows.filter(
+      (row) => row.status === "pending" || row.status === "running",
+    ).length;
+    const averageScore = complete.length
+      ? Math.round(
+          complete.reduce(
+            (sum, row) => sum + (row.consistency_score || 0),
+            0,
+          ) / complete.length,
+        )
+      : 0;
+    return {
+      total: rows.length,
+      complete: complete.length,
+      active,
+      averageScore,
+    };
+  }, [rows]);
 
   const runDemo = () => {
     const record = createFeaturedDemo();
@@ -88,6 +112,35 @@ const InvestigationsListPage = () => {
           </Button>
         </div>
       </header>
+
+      {!loading && rows.length > 0 && (
+        <section className="grid gap-px overflow-hidden border-b border-border bg-border md:grid-cols-4">
+          <WorkspaceMetric
+            icon={Activity}
+            label="Workspace reviews"
+            value={workspaceMetrics.total}
+            detail={`${workspaceMetrics.active} currently active`}
+          />
+          <WorkspaceMetric
+            icon={CheckCircle2}
+            label="Completed dossiers"
+            value={workspaceMetrics.complete}
+            detail={`${Math.round((workspaceMetrics.complete / workspaceMetrics.total) * 100)}% completion rate`}
+          />
+          <WorkspaceMetric
+            icon={Gauge}
+            label="Average score"
+            value={workspaceMetrics.averageScore}
+            detail="Across completed reviews"
+          />
+          <WorkspaceMetric
+            icon={TrendingUp}
+            label="Review posture"
+            value="Live"
+            detail="Evidence monitoring available"
+          />
+        </section>
+      )}
 
       <div className="grid gap-8 pt-8 xl:grid-cols-[minmax(0,1fr)_300px]">
         <div>
@@ -131,12 +184,12 @@ const InvestigationsListPage = () => {
             <EmptyState hasRows={rows.length > 0} onRunDemo={runDemo} />
           ) : (
             <div className="divide-y divide-border">
-              <div className="hidden grid-cols-[minmax(220px,1fr)_150px_130px_100px_24px] gap-5 py-3 text-[10px] uppercase tracking-[0.16em] text-muted-foreground md:grid">
+              <div className="hidden grid-cols-[minmax(220px,1fr)_150px_130px_100px_80px] gap-5 py-3 text-[10px] uppercase tracking-[0.16em] text-muted-foreground md:grid">
                 <span>Subject</span>
                 <span>Review context</span>
                 <span>Status</span>
                 <span className="text-right">Score</span>
-                <span />
+                <span className="text-right">Actions</span>
               </div>
               {filteredRows.map((row) => {
                 const target =
@@ -144,31 +197,54 @@ const InvestigationsListPage = () => {
                     ? `/report/${row.id}`
                     : `/investigation/${row.id}`;
                 return (
-                  <Link
+                  <div
                     key={row.id}
-                    to={target}
-                    className="group grid gap-4 py-6 transition-colors hover:bg-card md:grid-cols-[minmax(220px,1fr)_150px_130px_100px_24px] md:items-center md:px-3"
+                    className="group grid gap-4 py-6 transition-colors hover:bg-card md:grid-cols-[minmax(220px,1fr)_150px_130px_100px_80px] md:items-center md:px-3"
                   >
-                    <div className="min-w-0">
-                      <p className="truncate text-base font-medium">{row.subject_name}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        Updated {new Date(row.created_at).toLocaleDateString()}
+                    <Link to={target} className="contents">
+                      <div className="min-w-0">
+                        <p className="truncate text-base font-medium">
+                          {row.subject_name}
+                        </p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Updated {new Date(row.created_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <p className="text-sm capitalize text-muted-foreground">
+                        {row.context.replace("_", " ")}
                       </p>
+                      <StatusBadge status={row.status} />
+                      <div className="md:text-right">
+                        <span className="text-3xl font-medium tabular-nums tracking-[-0.04em]">
+                          {row.status === "complete"
+                            ? row.consistency_score
+                            : "N/A"}
+                        </span>
+                        {row.status === "complete" && (
+                          <span className="ml-1 text-xs text-muted-foreground">
+                            /100
+                          </span>
+                        )}
+                      </div>
+                    </Link>
+                    <div className="flex items-center justify-end gap-1">
+                      <DeleteDossierButton
+                        compact
+                        investigationId={row.id}
+                        subjectName={row.subject_name}
+                        onDeleted={() =>
+                          setRows((current) =>
+                            current.filter((item) => item.id !== row.id),
+                          )
+                        }
+                      />
+                      <Button asChild variant="ghost" size="icon">
+                        <Link to={target} aria-label={`Open ${row.subject_name}`}>
+                          <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-foreground" />
+                        </Link>
+                      </Button>
                     </div>
-                    <p className="text-sm capitalize text-muted-foreground">
-                      {row.context.replace("_", " ")}
-                    </p>
-                    <StatusBadge status={row.status} />
-                    <div className="md:text-right">
-                      <span className="text-3xl font-medium tabular-nums tracking-[-0.04em]">
-                        {row.status === "complete" ? row.consistency_score : "—"}
-                      </span>
-                      {row.status === "complete" && (
-                        <span className="ml-1 text-xs text-muted-foreground">/100</span>
-                      )}
-                    </div>
-                    <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-foreground" />
-                  </Link>
+                  </div>
                 );
               })}
             </div>
@@ -219,6 +295,29 @@ const InvestigationsListPage = () => {
     </div>
   );
 };
+
+const WorkspaceMetric = ({
+  icon: Icon,
+  label,
+  value,
+  detail,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: number | string;
+  detail: string;
+}) => (
+  <div className="bg-background px-4 py-5 md:px-5">
+    <div className="flex items-center justify-between gap-3">
+      <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+        {label}
+      </p>
+      <Icon className="h-3.5 w-3.5 text-primary" />
+    </div>
+    <p className="mt-3 text-3xl font-medium tracking-[-0.04em]">{value}</p>
+    <p className="mt-1 text-[11px] text-muted-foreground">{detail}</p>
+  </div>
+);
 
 const EmptyState = ({
   hasRows,

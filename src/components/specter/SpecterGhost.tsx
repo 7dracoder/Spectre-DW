@@ -15,7 +15,7 @@ interface SpecterGhostProps {
 }
 
 /**
- * Friendly cartoon ghost detective — Specter mascot.
+ * Friendly cartoon ghost detective: Specter mascot.
  * Warm cream body, ember cheeks, gentle float, blinking, optional magnifier.
  */
 const SpecterGhost = ({

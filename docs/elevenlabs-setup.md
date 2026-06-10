@@ -7,11 +7,13 @@ Create or edit a restricted ElevenLabs API key and enable:
 - Conversational AI / Agents: Read
 - Conversational AI / Agents: Write
 
-Write access is needed while creating or updating the Spectre agent. The live
-website uses short-lived conversation tokens generated server-side, so the API
-key must never be exposed to browser code. Separate text-to-speech, speech-to-
-text, music, sound-effects, and voice-cloning permissions are not required for
-this agent flow.
+The signed conversation-token endpoint currently requires `convai_write`, even
+when the agent itself was created in the ElevenLabs dashboard. The website
+generates short-lived tokens server-side, so the API key must never be exposed
+to browser code.
+
+Leave text-to-speech, speech-to-text, dubbing, music, sound effects, voice
+cloning, and voice-library write permissions off for this flow.
 
 ## Agent Configuration
 
@@ -22,8 +24,12 @@ this agent flow.
 4. Set temperature to `0.2`.
 5. Disable extended reasoning.
 6. Keep the default backup model enabled.
-7. Choose a professional, neutral voice at approximately `0.95` to `1.0`
-   speaking speed.
+7. In the Voice Library, filter for an English female voice described as soft,
+   warm, calm, or friendly. Preview it with dossier-style text before saving.
+8. Set speaking speed to `0.92` to `0.96` for a softer, deliberate delivery.
+9. Keep stability moderate so the voice sounds natural without becoming
+   theatrical.
+10. Copy the resulting agent ID beginning with `agent_`.
 
 Create these dynamic variables with safe empty defaults:
 
@@ -43,6 +49,18 @@ Create these dynamic variables with safe empty defaults:
   permits.
 - Do not add client tools, webhooks, or knowledge-base write access for the
   initial release.
+
+## Conversation Behavior
+
+The website supports both microphone turns and typed messages in the same live
+session. ElevenLabs receives the dossier as a contextual update after the
+connection opens. The agent should:
+
+- ask short follow-up questions when needed;
+- cite retained source titles or IDs;
+- say when the dossier cannot support an answer;
+- avoid filling silence with unsupported conclusions;
+- keep each turn concise enough for natural conversation.
 
 After the agent is created, store its agent ID with the owner-only reducer:
 

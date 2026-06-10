@@ -33,9 +33,10 @@ export const PIPELINE_STEPS = [
   },
   {
     key: "embed",
-    label: "Comparing writing patterns",
-    detail: "Examining how public language varies across time and context.",
-    provider: "Authorship",
+    label: "Evaluating available source text",
+    detail:
+      "Checking whether retained text is sufficient for comparison without treating snippets as authorship proof.",
+    provider: "Text review",
   },
   {
     key: "signals",
@@ -45,9 +46,10 @@ export const PIPELINE_STEPS = [
   },
   {
     key: "fingerprint",
-    label: "Mapping the writing fingerprint",
-    detail: "Grouping public writing samples and highlighting meaningful outliers.",
-    provider: "Pattern",
+    label: "Mapping evidence relationships",
+    detail:
+      "Linking retained sources to matched identifiers, claims, and unresolved checks.",
+    provider: "Evidence map",
   },
   {
     key: "dossier",
@@ -328,7 +330,10 @@ const buildRecord = (input: InvestigationInput, id: string): InvestigationRecord
     },
     consistency_score: score,
     confidence_band: "Moderate-high",
-    classification: score >= 81 ? "High confidence human pattern" : "Mostly organic, minor anomalies",
+    classification:
+      score >= 81
+        ? "Strong sample evidence alignment"
+        : "Mixed sample evidence alignment",
     dossier_summary:
       `${input.subject_name}'s public footprint shows a gradual, multi-year pattern with meaningful variation across technical, formal, and casual contexts. ` +
       "The strongest evidence is timeline depth and cross-platform coherence. A concentrated recent publishing burst and one thinly supported expertise claim merit manual review, but the overall pattern is more consistent with an evolving person than an identity assembled all at once.",
@@ -399,6 +404,14 @@ export const listLocalInvestigations = () =>
   readAll()
     .map(advance)
     .sort((a, b) => b.created_at.localeCompare(a.created_at));
+
+export const deleteLocalInvestigation = (id: string) => {
+  const records = readAll();
+  const next = records.filter((record) => record.id !== id);
+  if (next.length === records.length) return false;
+  writeAll(next);
+  return true;
+};
 
 export const createFeaturedDemo = () =>
   createLocalInvestigation({

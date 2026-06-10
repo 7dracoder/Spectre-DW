@@ -6,10 +6,16 @@
 import { type Infer as __Infer } from "spacetimedb";
 
 // Import all procedure arg schemas
+import * as AskInvestigationProcedure from "../ask_investigation_procedure";
 import * as GetElevenlabsConversationTokenProcedure from "../get_elevenlabs_conversation_token_procedure";
+import * as GetInvestigationOperationsProcedure from "../get_investigation_operations_procedure";
 import * as RunInvestigationProcedure from "../run_investigation_procedure";
 
+export type AskInvestigationArgs = __Infer<typeof AskInvestigationProcedure.params>;
+export type AskInvestigationResult = __Infer<typeof AskInvestigationProcedure.returnType>;
 export type GetElevenlabsConversationTokenArgs = __Infer<typeof GetElevenlabsConversationTokenProcedure.params>;
 export type GetElevenlabsConversationTokenResult = __Infer<typeof GetElevenlabsConversationTokenProcedure.returnType>;
+export type GetInvestigationOperationsArgs = __Infer<typeof GetInvestigationOperationsProcedure.params>;
+export type GetInvestigationOperationsResult = __Infer<typeof GetInvestigationOperationsProcedure.returnType>;
 export type RunInvestigationArgs = __Infer<typeof RunInvestigationProcedure.params>;
 export type RunInvestigationResult = __Infer<typeof RunInvestigationProcedure.returnType>;

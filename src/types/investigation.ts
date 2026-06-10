@@ -28,6 +28,17 @@ export type EvidenceSource = {
   title: string;
   published_at: string;
   snippet: string;
+  identity_match_score?: number;
+  source_quality_score?: number;
+  date_confidence?: "reported" | "unknown";
+  matched_anchors?: string[];
+};
+
+export type EvidenceContradiction = {
+  id: string;
+  summary: string;
+  source_ids: string[];
+  status: "possible" | "confirmed" | "resolved";
 };
 
 export type InvestigationSignal = {
@@ -88,6 +99,11 @@ export type InvestigationRecord = InvestigationInput & {
   strengths: string[];
   concerns: string[];
   recommendations: string[];
+  evidence_confidence_score?: number | null;
+  confidence_rationale?: string[];
+  contradictions?: EvidenceContradiction[];
+  limitations?: string[];
+  methodology_version?: string;
   sources: EvidenceSource[];
   signals: InvestigationSignal[];
   timeline: TimelineEvent[];
@@ -106,3 +122,15 @@ export type InvestigationListItem = Pick<
   | "stage_index"
 >;
 
+export type InvestigationOperation = {
+  id: string;
+  investigationId: string;
+  capability: string;
+  status: string;
+  detail: string;
+  metric: string;
+  durationMs: number;
+  externalRef: string;
+  startedAt: string;
+  completedAt: string;
+};

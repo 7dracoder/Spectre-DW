@@ -182,7 +182,9 @@ const InvestigationProgressPage = () => {
                       {source.platform}
                     </span>
                     <span className="text-[10px] text-muted-foreground">
-                      {new Date(source.published_at).getFullYear()}
+                      {source.published_at
+                        ? new Date(source.published_at).getFullYear()
+                        : "Date unknown"}
                     </span>
                   </div>
                   <p className="mt-1 text-sm font-medium">{source.title}</p>
