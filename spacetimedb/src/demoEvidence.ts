@@ -15,6 +15,18 @@ export type InvestigationInput = {
   notes?: string;
 };
 
+type AnalysisRevisionSnapshot = {
+  revision: number;
+  completed_at: string;
+  consistency_score: number | null;
+  evidence_confidence_score: number | null;
+  source_count: number;
+  added_sources: number;
+  removed_sources: number;
+  retained_sources: number;
+  classification: string | null;
+};
+
 const hash = (value: string) =>
   Array.from(value).reduce(
     (acc, char) => ((acc << 5) - acc + char.charCodeAt(0)) | 0,
@@ -321,6 +333,22 @@ export const buildInvestigationRecord = (
       "Ask for one recent work sample tied to the senior-level expertise claim.",
       "Use this dossier alongside interviews, references, and direct identity verification.",
     ],
+    analysis_revision: 1,
+    revision_summary: {
+      revision: 1,
+      completed_at: updatedAt,
+      consistency_score: score,
+      evidence_confidence_score: score,
+      source_count: sources.length,
+      added_sources: sources.length,
+      removed_sources: 0,
+      retained_sources: 0,
+      classification:
+        score >= 81
+          ? "Strong sample evidence alignment"
+          : "Mixed sample evidence alignment",
+    },
+    analysis_history: [] as AnalysisRevisionSnapshot[],
     sources,
     signals,
     timeline,

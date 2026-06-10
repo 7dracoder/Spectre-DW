@@ -7,6 +7,7 @@ import {
   deleteLocalInvestigation,
   getLocalInvestigation,
   listLocalInvestigations,
+  revisitLocalInvestigation,
 } from "@/lib/investigationStore";
 import type {
   InvestigationInput,
@@ -80,7 +81,9 @@ export const listInvestigations = async (
           record?.consistency_score ?? row.consistencyScore,
         context: row.context,
         created_at: row.createdAt,
+        updated_at: record?.updated_at ?? row.updatedAt,
         stage_index: record?.stage_index ?? row.stageIndex,
+        analysis_revision: record?.analysis_revision ?? 1,
       };
     })
     .sort((a, b) => b.created_at.localeCompare(a.created_at));
@@ -106,6 +109,22 @@ export const deleteInvestigation = async (id: string) => {
   const { connection } = await connectSpacetime();
   await connection.reducers.deleteInvestigation({ investigationId: id });
   window.dispatchEvent(new Event("specter:investigations"));
+};
+
+export const revisitInvestigation = async (id: string) => {
+  if (demoMode || isLocal(id)) {
+    return revisitLocalInvestigation(id);
+  }
+
+  const { connection } = await connectSpacetime();
+  const recordJson = await connection.procedures.runInvestigation({
+    investigationId: id,
+  });
+  const record = parseRecord(recordJson);
+  if (!record) throw new Error("The dossier could not be revisited.");
+  window.dispatchEvent(new Event("specter:investigations"));
+  window.dispatchEvent(new Event("specter:operations"));
+  return record;
 };
 
 export const getElevenlabsConversationToken = async (investigationId: string) => {

@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import DeleteDossierButton from "@/components/specter/DeleteDossierButton";
+import RevisitDossierButton from "@/components/specter/RevisitDossierButton";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
 import { createFeaturedDemo } from "@/lib/investigationStore";
@@ -184,7 +185,7 @@ const InvestigationsListPage = () => {
             <EmptyState hasRows={rows.length > 0} onRunDemo={runDemo} />
           ) : (
             <div className="divide-y divide-border">
-              <div className="hidden grid-cols-[minmax(220px,1fr)_150px_130px_100px_80px] gap-5 py-3 text-[10px] uppercase tracking-[0.16em] text-muted-foreground md:grid">
+              <div className="hidden grid-cols-[minmax(220px,1fr)_150px_130px_100px_130px] gap-5 py-3 text-[10px] uppercase tracking-[0.16em] text-muted-foreground md:grid">
                 <span>Subject</span>
                 <span>Review context</span>
                 <span>Status</span>
@@ -199,7 +200,7 @@ const InvestigationsListPage = () => {
                 return (
                   <div
                     key={row.id}
-                    className="group grid gap-4 py-6 transition-colors hover:bg-card md:grid-cols-[minmax(220px,1fr)_150px_130px_100px_80px] md:items-center md:px-3"
+                    className="group grid gap-4 py-6 transition-colors hover:bg-card md:grid-cols-[minmax(220px,1fr)_150px_130px_100px_130px] md:items-center md:px-3"
                   >
                     <Link to={target} className="contents">
                       <div className="min-w-0">
@@ -207,7 +208,8 @@ const InvestigationsListPage = () => {
                           {row.subject_name}
                         </p>
                         <p className="mt-1 text-xs text-muted-foreground">
-                          Updated {new Date(row.created_at).toLocaleDateString()}
+                          Updated {new Date(row.updated_at).toLocaleDateString()}
+                          {" · "}Revision {row.analysis_revision || 1}
                         </p>
                       </div>
                       <p className="text-sm capitalize text-muted-foreground">
@@ -228,6 +230,34 @@ const InvestigationsListPage = () => {
                       </div>
                     </Link>
                     <div className="flex items-center justify-end gap-1">
+                      {(row.status === "complete" || row.status === "failed") && (
+                        <RevisitDossierButton
+                          compact
+                          investigationId={row.id}
+                          subjectName={row.subject_name}
+                          onRevisited={(record) =>
+                            setRows((current) =>
+                              current.map((item) =>
+                                item.id === row.id
+                                  ? {
+                                      id: record.id,
+                                      subject_name: record.subject_name,
+                                      status: record.status,
+                                      consistency_score:
+                                        record.consistency_score,
+                                      context: record.context,
+                                      created_at: record.created_at,
+                                      updated_at: record.updated_at,
+                                      stage_index: record.stage_index,
+                                      analysis_revision:
+                                        record.analysis_revision || 1,
+                                    }
+                                  : item,
+                              ),
+                            )
+                          }
+                        />
+                      )}
                       <DeleteDossierButton
                         compact
                         investigationId={row.id}

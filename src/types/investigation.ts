@@ -41,6 +41,18 @@ export type EvidenceContradiction = {
   status: "possible" | "confirmed" | "resolved";
 };
 
+export type AnalysisRevisionSnapshot = {
+  revision: number;
+  completed_at: string;
+  consistency_score: number | null;
+  evidence_confidence_score: number | null;
+  source_count: number;
+  added_sources: number;
+  removed_sources: number;
+  retained_sources: number;
+  classification: string | null;
+};
+
 export type InvestigationSignal = {
   id: string;
   signal_key: string;
@@ -104,6 +116,9 @@ export type InvestigationRecord = InvestigationInput & {
   contradictions?: EvidenceContradiction[];
   limitations?: string[];
   methodology_version?: string;
+  analysis_revision?: number;
+  revision_summary?: AnalysisRevisionSnapshot;
+  analysis_history?: AnalysisRevisionSnapshot[];
   sources: EvidenceSource[];
   signals: InvestigationSignal[];
   timeline: TimelineEvent[];
@@ -119,7 +134,9 @@ export type InvestigationListItem = Pick<
   | "consistency_score"
   | "context"
   | "created_at"
+  | "updated_at"
   | "stage_index"
+  | "analysis_revision"
 >;
 
 export type InvestigationOperation = {

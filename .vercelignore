@@ -1,0 +1,8 @@
+.spacetime-data
+docs
+integrations
+qa
+spacetimedb
+Towerfile
+spacetime.json
+*.log

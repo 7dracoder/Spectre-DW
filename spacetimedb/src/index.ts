@@ -9,7 +9,6 @@ import {
   discoverPublicEvidence,
   notifyTower,
   synthesizeDossierAnswer,
-  synthesizeInvestigation,
 } from "./providers";
 
 const investigations = table(
@@ -236,23 +235,102 @@ export const deleteInvestigation = spacetimedb.reducer(
   },
 );
 
+const parseInvestigationInput = (recordJson: string): InvestigationInput => {
+  const value = JSON.parse(recordJson) as Partial<InvestigationInput>;
+  const subjectName = value.subject_name?.trim();
+  if (!subjectName) throw new Error("Investigation subject is missing.");
+
+  const optional = (field: string | undefined) => field?.trim() || undefined;
+  return {
+    subject_name: subjectName,
+    github_username: optional(value.github_username),
+    x_handle: optional(value.x_handle),
+    linkedin_url: optional(value.linkedin_url),
+    website_url: optional(value.website_url),
+    other_profile_url: optional(value.other_profile_url),
+    context: value.context?.trim() || "general",
+    notes: optional(value.notes),
+  };
+};
+
+type StoredInvestigationRecord = ReturnType<
+  typeof buildInsufficientInvestigationRecord
+>;
+
+const buildRevisionSummary = (
+  previousRecord: StoredInvestigationRecord | null,
+  record: StoredInvestigationRecord,
+  revision: number,
+) => {
+  const previousUrls = new Set(
+    previousRecord?.sources.map((source) => source.url) || [],
+  );
+  const currentUrls = new Set(record.sources.map((source) => source.url));
+  return {
+    revision,
+    completed_at: new Date().toISOString(),
+    consistency_score: record.consistency_score,
+    evidence_confidence_score: record.evidence_confidence_score,
+    source_count: record.sources.length,
+    added_sources: Array.from(currentUrls).filter(
+      (url) => !previousUrls.has(url),
+    ).length,
+    removed_sources: Array.from(previousUrls).filter(
+      (url) => !currentUrls.has(url),
+    ).length,
+    retained_sources: Array.from(currentUrls).filter((url) =>
+      previousUrls.has(url),
+    ).length,
+    classification: record.classification,
+  };
+};
+
 export const runInvestigation = spacetimedb.procedure(
   { investigationId: t.string() },
   t.string(),
   (ctx, { investigationId }) => {
-    const { investigation, provider } = ctx.withTx((tx) => {
+    const analysisStartedAt = new Date().toISOString();
+    const {
+      investigation,
+      input,
+      previousRecord,
+      previousOperations,
+      nextRevision,
+      provider,
+    } = ctx.withTx((tx) => {
       const row = tx.db.investigations.id.find(investigationId);
       if (!row) throw new Error("Investigation not found.");
       if (!row.owner.isEqual(tx.sender)) {
         throw new Error("Investigation access denied.");
       }
+      const parsed = JSON.parse(row.recordJson) as Partial<StoredInvestigationRecord>;
+      const completedRecord =
+        Array.isArray(parsed.sources) && parsed.status === "complete"
+          ? (parsed as StoredInvestigationRecord)
+          : null;
+      const runningRecord = completedRecord
+        ? {
+            ...completedRecord,
+            status: "running",
+            progress_percent: 35,
+            stage_index: 2,
+            analysis_started_at: analysisStartedAt,
+            updated_at: analysisStartedAt,
+          }
+        : null;
       tx.db.investigations.id.update({
         ...row,
         status: "running",
         progressPercent: 35,
         stageIndex: 2,
-        updatedAt: new Date().toISOString(),
+        recordJson: runningRecord
+          ? JSON.stringify(runningRecord)
+          : row.recordJson,
+        updatedAt: analysisStartedAt,
       });
+      const operations = Array.from(
+        tx.db.integrationRuns.investigationId.filter(investigationId),
+      );
       for (const operation of tx.db.integrationRuns.investigationId.filter(
         investigationId,
       )) {
@@ -262,13 +340,14 @@ export const runInvestigation = spacetimedb.procedure(
         tx.db.providerConfig.key.find(key)?.value || "";
       return {
         investigation: row,
+        input: parseInvestigationInput(row.recordJson),
+        previousRecord: completedRecord,
+        previousOperations: operations,
+        nextRevision: completedRecord
+          ? Math.max(1, completedRecord.analysis_revision || 1) + 1
+          : 1,
         provider: {
           nimbleApiKey: getProvider("NIMBLE_API_KEY"),
-          runpodApiKey: getProvider("RUNPOD_API_KEY"),
-          runpodTextModel:
-            getProvider("RUNPOD_TEXT_MODEL") || "qwen3-32b-awq",
-          runpodFallbackModel:
-            getProvider("RUNPOD_FALLBACK_MODEL") || "granite-4-0-h-small",
           towerApiKey: getProvider("TOWER_API_KEY"),
           towerAppName: getProvider("TOWER_APP_NAME"),
           towerEnvironment:
@@ -325,14 +404,12 @@ export const runInvestigation = spacetimedb.procedure(
     };
 
     try {
-      const input = JSON.parse(investigation.recordJson) as InvestigationInput;
       let record = buildInsufficientInvestigationRecord(
         input,
         investigation.id,
         investigation.owner.toHexString(),
         investigation.createdAt,
       );
-      const analysisStartedAt = new Date().toISOString();
 
       writeOperation({
         capability: "memory",
@@ -391,80 +468,26 @@ export const runInvestigation = spacetimedb.procedure(
             startedAt: discoveryStartedAt,
             completedAt: new Date().toISOString(),
           });
-          let narrative = null;
-          if (provider.runpodApiKey) {
-            const reasoningStartedAt = new Date().toISOString();
-            const reasoningStartedMs = new Date().getTime();
-            writeOperation({
-              capability: "reasoning",
-              providerName: "RunPod",
-              status: "running",
-              detail:
-                "Challenging the evidence, separating uncertainty, and drafting the dossier.",
-              startedAt: reasoningStartedAt,
-            });
-            try {
-              const synthesis = synthesizeInvestigation(
-                ctx.http,
-                provider.runpodApiKey,
-                provider.runpodTextModel,
-                provider.runpodFallbackModel,
-                input,
-                evidence,
-              );
-              narrative = synthesis?.narrative || null;
-              writeOperation({
-                capability: "reasoning",
-                providerName: "RunPod",
-                status: synthesis ? "complete" : "fallback",
-                detail: synthesis
-                  ? `A secondary evidence review completed with ${synthesis.model}; deterministic source scoring remained authoritative.`
-                  : "The hosted reasoning pass was unavailable; the grounded deterministic analysis was retained.",
-                metric: synthesis
-                  ? `${synthesis.executionTimeMs || new Date().getTime() - reasoningStartedMs} ms`
-                  : "Local fallback",
-                durationMs:
-                  synthesis?.executionTimeMs ||
-                  new Date().getTime() - reasoningStartedMs,
-                externalRef: synthesis?.requestId || "",
-                startedAt: reasoningStartedAt,
-                completedAt: new Date().toISOString(),
-              });
-            } catch {
-              narrative = null;
-              writeOperation({
-                capability: "reasoning",
-                providerName: "RunPod",
-                status: "fallback",
-                detail:
-                  "The hosted reasoning pass was interrupted; the evidence-safe fallback completed the dossier.",
-                metric: "Local fallback",
-                durationMs: new Date().getTime() - reasoningStartedMs,
-                startedAt: reasoningStartedAt,
-                completedAt: new Date().toISOString(),
-              });
-            }
-          } else {
-            writeOperation({
-              capability: "reasoning",
-              providerName: "RunPod",
-              status: "not_configured",
-              detail:
-                "The dossier used deterministic evidence scoring because hosted reasoning is not configured.",
-              metric: "Deterministic",
-              startedAt: new Date().toISOString(),
-              completedAt: new Date().toISOString(),
-            });
-          }
+          const reasoningStartedAt = new Date().toISOString();
+          writeOperation({
+            capability: "reasoning",
+            providerName: "Spectre",
+            status: "complete",
+            detail:
+              "Deterministic identity, source-quality, chronology, and diversity scoring completed without an unnecessary generation pass.",
+            metric: `${evidence.results.length} sources scored`,
+            startedAt: reasoningStartedAt,
+            completedAt: new Date().toISOString(),
+          });
           record = buildLiveInvestigationRecord(
             input,
             investigation.id,
             investigation.owner.toHexString(),
             investigation.createdAt,
             evidence,
-            narrative,
+            null,
           );
-        } catch {
+        } catch (error) {
           writeOperation({
             capability: "discovery",
             providerName: "Nimble",
@@ -478,14 +501,23 @@ export const runInvestigation = spacetimedb.procedure(
           });
           writeOperation({
             capability: "reasoning",
-            providerName: "RunPod",
+            providerName: "Spectre",
             status: "skipped",
             detail:
-              "Hosted reasoning was skipped because no live public evidence was returned.",
+              "Evidence scoring was skipped because no live public evidence was returned.",
             metric: "Awaiting evidence",
             startedAt: new Date().toISOString(),
             completedAt: new Date().toISOString(),
           });
+          if (previousRecord) {
+            const detail =
+              error instanceof Error
+                ? error.message
+                : "Public discovery returned no usable evidence.";
+            throw new Error(
+              `Revisit could not refresh public evidence. Previous dossier was preserved. ${detail}`,
+            );
+          }
         }
       } else {
         const completedAt = new Date().toISOString();
@@ -501,15 +533,35 @@ export const runInvestigation = spacetimedb.procedure(
         });
         writeOperation({
           capability: "reasoning",
-          providerName: "RunPod",
+          providerName: "Spectre",
           status: "skipped",
           detail:
-            "Hosted reasoning is waiting for a live discovery result.",
+            "Evidence scoring is waiting for a live discovery result.",
           metric: "Awaiting evidence",
           startedAt: completedAt,
           completedAt,
         });
+        if (previousRecord) {
+          throw new Error(
+            "Revisit requires configured public discovery. Previous dossier was preserved.",
+          );
+        }
       }
+
+      record.analysis_started_at = analysisStartedAt;
+      record.updated_at = new Date().toISOString();
+      const revisionSummary = buildRevisionSummary(
+        previousRecord,
+        record,
+        nextRevision,
+      );
+      const previousHistory = previousRecord?.analysis_history || [];
+      const previousSnapshot = previousRecord?.revision_summary;
+      record.analysis_revision = nextRevision;
+      record.revision_summary = revisionSummary;
+      record.analysis_history = previousSnapshot
+        ? [...previousHistory, previousSnapshot].slice(-5)
+        : previousHistory.slice(-5);
 
       ctx.withTx((tx) => {
         for (const row of tx.db.sourceDocuments.investigationId.filter(investigationId)) {
@@ -645,11 +697,23 @@ export const runInvestigation = spacetimedb.procedure(
       ctx.withTx((tx) => {
         const row = tx.db.investigations.id.find(investigationId);
         if (!row) return;
-        tx.db.investigations.id.update({
-          ...row,
-          status: "failed",
-          updatedAt: new Date().toISOString(),
-        });
+        for (const operation of tx.db.integrationRuns.investigationId.filter(
+          investigationId,
+        )) {
+          tx.db.integrationRuns.id.delete(operation.id);
+        }
+        if (previousRecord) {
+          tx.db.investigations.id.update(investigation);
+          for (const operation of previousOperations) {
+            tx.db.integrationRuns.insert(operation);
+          }
+        } else {
+          tx.db.investigations.id.update({
+            ...row,
+            status: "failed",
+            updatedAt: new Date().toISOString(),
+          });
+        }
       });
       throw error;
     }

@@ -293,23 +293,29 @@ const buildSearchQuery = (input: InvestigationInput) => {
 
 const buildSearchQueries = (input: InvestigationInput) => {
   const queries = [buildSearchQuery(input)];
-  const github = input.github_username?.replace(/^@/, "").trim();
-  const xHandle = input.x_handle?.replace(/^@/, "").trim();
+  const subject = input.subject_name.trim();
+  const normalizedSubject = normalizeIdentifier(subject);
+  const github = normalizeIdentifier(input.github_username);
+  const xHandle = normalizeIdentifier(input.x_handle);
 
-  if (github) {
-    queries.push(`${github} GitHub repositories projects`);
-  }
   if (input.website_url) {
     const hostname = getHostname(input.website_url);
     queries.push(
       hostname
-        ? `${input.subject_name.trim()} site:${hostname}`
-        : `${input.subject_name.trim()} personal website`,
+        ? `${subject} site:${hostname}`
+        : `${subject} personal website`,
     );
-  } else if (xHandle) {
-    queries.push(`${input.subject_name.trim()} ${xHandle} public posts`);
-  } else if (input.linkedin_url) {
-    queries.push(`${input.subject_name.trim()} LinkedIn public profile`);
+  }
+  if (github && normalizedSubject !== github) {
+    queries.push(`${github} GitHub repositories projects`);
+  }
+  if (xHandle && normalizedSubject !== xHandle) {
+    queries.push(`${subject} ${xHandle} public posts`);
+  }
+  if (input.linkedin_url) queries.push(`${subject} LinkedIn public profile`);
+  if (input.other_profile_url) {
+    const hostname = getHostname(input.other_profile_url);
+    if (hostname) queries.push(`${subject} site:${hostname}`);
   }
 
   return Array.from(new Set(queries.map((query) => query.trim())))

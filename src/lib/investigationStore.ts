@@ -1,4 +1,5 @@
 import type {
+  AnalysisRevisionSnapshot,
   EvidenceClaim,
   EvidenceSource,
   FingerprintPoint,
@@ -72,6 +73,44 @@ const writeAll = (records: InvestigationRecord[]) => {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
   window.dispatchEvent(new CustomEvent("specter:investigations"));
+};
+
+const recordInput = (record: InvestigationRecord): InvestigationInput => ({
+  subject_name: record.subject_name,
+  github_username: record.github_username,
+  x_handle: record.x_handle,
+  linkedin_url: record.linkedin_url,
+  website_url: record.website_url,
+  other_profile_url: record.other_profile_url,
+  context: record.context,
+  notes: record.notes,
+});
+
+const revisionSnapshot = (
+  record: InvestigationRecord,
+  revision: number,
+  previous?: InvestigationRecord,
+): AnalysisRevisionSnapshot => {
+  const previousUrls = new Set(previous?.sources.map((source) => source.url) || []);
+  const currentUrls = new Set(record.sources.map((source) => source.url));
+  return {
+    revision,
+    completed_at: record.updated_at,
+    consistency_score: record.consistency_score,
+    evidence_confidence_score:
+      record.evidence_confidence_score ?? record.consistency_score,
+    source_count: record.sources.length,
+    added_sources: Array.from(currentUrls).filter(
+      (url) => !previousUrls.has(url),
+    ).length,
+    removed_sources: Array.from(previousUrls).filter(
+      (url) => !currentUrls.has(url),
+    ).length,
+    retained_sources: Array.from(currentUrls).filter((url) =>
+      previousUrls.has(url),
+    ).length,
+    classification: record.classification,
+  };
 };
 
 const hash = (value: string) =>
@@ -351,6 +390,22 @@ const buildRecord = (input: InvestigationInput, id: string): InvestigationRecord
       "Ask for one recent work sample tied to the senior-level expertise claim.",
       "Use this dossier alongside interviews, references, and direct identity verification.",
     ],
+    analysis_revision: 1,
+    revision_summary: {
+      revision: 1,
+      completed_at: now,
+      consistency_score: score,
+      evidence_confidence_score: score,
+      source_count: sources.length,
+      added_sources: sources.length,
+      removed_sources: 0,
+      retained_sources: 0,
+      classification:
+        score >= 81
+          ? "Strong sample evidence alignment"
+          : "Mixed sample evidence alignment",
+    },
+    analysis_history: [],
     sources,
     signals,
     timeline: buildTimeline(sources),
@@ -411,6 +466,49 @@ export const deleteLocalInvestigation = (id: string) => {
   if (next.length === records.length) return false;
   writeAll(next);
   return true;
+};
+
+export const revisitLocalInvestigation = (id: string) => {
+  const records = readAll();
+  const index = records.findIndex((record) => record.id === id);
+  if (index < 0) throw new Error("Investigation not found.");
+
+  const previous = advance(records[index]);
+  const now = new Date().toISOString();
+  const rebuilt = buildRecord(recordInput(previous), id);
+  const revision = Math.max(1, previous.analysis_revision || 1) + 1;
+  const refreshed: InvestigationRecord = {
+    ...rebuilt,
+    created_at: previous.created_at,
+    created_by: previous.created_by,
+    updated_at: now,
+    analysis_started_at: now,
+    status: "complete",
+    stage_index: TOTAL_STAGES - 1,
+    progress_percent: 100,
+    counters: {
+      sources: rebuilt.sources.length,
+      platforms: new Set(rebuilt.sources.map((source) => source.platform)).size,
+      timelineEvents: rebuilt.timeline.length,
+      claims: rebuilt.claims.length,
+      writingSamples: rebuilt.embeddings.length,
+      clusters: 4,
+    },
+    analysis_revision: revision,
+    analysis_history: [
+      ...(previous.analysis_history || []),
+      previous.revision_summary ||
+        revisionSnapshot(previous, Math.max(1, revision - 1)),
+    ].slice(-5),
+  };
+  refreshed.revision_summary = revisionSnapshot(
+    refreshed,
+    revision,
+    previous,
+  );
+  records[index] = refreshed;
+  writeAll(records);
+  return refreshed;
 };
 
 export const createFeaturedDemo = () =>

@@ -25,6 +25,7 @@ import DossierAsk from "@/components/specter/DossierAsk";
 import DeleteDossierButton from "@/components/specter/DeleteDossierButton";
 import FingerprintScatter from "@/components/specter/FingerprintScatter";
 import InvestigationOperations from "@/components/specter/InvestigationOperations";
+import RevisitDossierButton from "@/components/specter/RevisitDossierButton";
 import ScenarioScoreLab from "@/components/specter/ScenarioScoreLab";
 import SourceIntelligence from "@/components/specter/SourceIntelligence";
 import TimelinePlayback from "@/components/specter/TimelinePlayback";
@@ -140,7 +141,7 @@ const ReportPage = () => {
 
   const copySummary = async () => {
     await navigator.clipboard.writeText(
-      `${record.subject_name}\nPublic Evidence Consistency Score: ${score}/100\nEvidence Confidence: ${record.evidence_confidence_score ?? score}/100\n\n${record.dossier_summary}`,
+      `${record.subject_name}\nPublic Evidence Consistency Score: ${score}/100\nEvidence Confidence: ${record.evidence_confidence_score ?? score}/100\nAnalysis Revision: ${record.analysis_revision || 1}\n\n${record.dossier_summary}`,
     );
     toast({ title: "Summary copied" });
   };
@@ -150,6 +151,7 @@ const ReportPage = () => {
       `SPECTER DOSSIER: ${record.subject_name}`,
       `Public Evidence Consistency Score: ${score}/100`,
       `Evidence Confidence: ${record.evidence_confidence_score ?? score}/100`,
+      `Analysis Revision: ${record.analysis_revision || 1}`,
       `Classification: ${record.classification}`,
       `Confidence: ${record.confidence_band}`,
       "",
@@ -196,6 +198,11 @@ const ReportPage = () => {
                 <span>Final dossier</span>
               </div>
               <div className="flex gap-2">
+                <RevisitDossierButton
+                  investigationId={record.id}
+                  subjectName={record.subject_name}
+                  onRevisited={setRecord}
+                />
                 <DeleteDossierButton
                   investigationId={record.id}
                   subjectName={record.subject_name}
@@ -226,10 +233,28 @@ const ReportPage = () => {
                   <span>
                     Updated {new Date(record.updated_at).toLocaleDateString()}
                   </span>
+                  <span>Revision {record.analysis_revision || 1}</span>
                   {record.id.startsWith("demo-") && (
                     <span>Simulated demo evidence</span>
                   )}
                 </div>
+                {(record.analysis_revision || 1) > 1 &&
+                  record.revision_summary && (
+                    <div className="mt-5 inline-flex flex-wrap items-center gap-x-4 gap-y-1 border border-border bg-background px-3 py-2 text-[11px] text-muted-foreground">
+                      <span className="font-medium text-foreground">
+                        Latest revisit
+                      </span>
+                      <span>
+                        {record.revision_summary.added_sources} new sources
+                      </span>
+                      <span>
+                        {record.revision_summary.removed_sources} removed
+                      </span>
+                      <span>
+                        {record.revision_summary.retained_sources} retained
+                      </span>
+                    </div>
+                  )}
 
                 <div className="mt-8 grid gap-px overflow-hidden border-y border-border bg-border sm:grid-cols-4">
                   <HeroMetric
@@ -321,11 +346,26 @@ const ReportPage = () => {
             </div>
           </section>
 
-          <InvestigationOperations record={record} />
-          <DossierAsk record={record} />
-          <SourceIntelligence record={record} />
-          <TimelinePlayback record={record} />
-          <ScenarioScoreLab record={record} />
+          <InvestigationOperations
+            key={`operations-${record.analysis_revision || 1}`}
+            record={record}
+          />
+          <DossierAsk
+            key={`ask-${record.analysis_revision || 1}`}
+            record={record}
+          />
+          <SourceIntelligence
+            key={`sources-${record.analysis_revision || 1}`}
+            record={record}
+          />
+          <TimelinePlayback
+            key={`timeline-${record.analysis_revision || 1}`}
+            record={record}
+          />
+          <ScenarioScoreLab
+            key={`scenarios-${record.analysis_revision || 1}`}
+            record={record}
+          />
 
           {record.embeddings.length > 0 && (
             <section id="writing" className="report-reveal scroll-mt-24">
@@ -333,7 +373,10 @@ const ReportPage = () => {
                 title="Writing fingerprint"
                 meta={`${record.embeddings.length} public writing samples`}
               >
-                <FingerprintScatter points={record.embeddings} />
+                <FingerprintScatter
+                  key={`writing-${record.analysis_revision || 1}`}
+                  points={record.embeddings}
+                />
                 <p className="mt-4 max-w-3xl text-xs leading-6 text-muted-foreground">
                   This map is shown only when full writing samples were analyzed.
                   Search snippets alone are never treated as authorship evidence.
@@ -342,7 +385,7 @@ const ReportPage = () => {
             </section>
           )}
 
-          <ConversationProvider>
+          <ConversationProvider key={`voice-${record.analysis_revision || 1}`}>
             <VoiceInvestigator record={record} />
           </ConversationProvider>
 

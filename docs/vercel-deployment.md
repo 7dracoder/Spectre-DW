@@ -5,10 +5,11 @@
 - Framework preset: `Vite`
 - Build command: `npm run build`
 - Output directory: `dist`
-- Install command: `npm install`
+- Install command: `npm ci`
 
 `vercel.json` includes the single-page application rewrite required for direct
-links such as `/report/:id` and `/investigation/:id`.
+links such as `/report/:id` and `/investigation/:id`. The build command runs
+TypeScript project validation before creating the production bundle.
 
 ## Environment Variables
 
@@ -29,3 +30,23 @@ the private SpacetimeDB `provider_config` table.
 
 After changing an environment variable, redeploy so Vite can include the value
 in the production bundle.
+
+## Deployment Verification
+
+Run the same contract before pushing:
+
+```sh
+npm ci
+npm run check
+```
+
+The repository's `.vercelignore` excludes backend source, local database state,
+documentation, and Tower workflow files from CLI deployment uploads. Generated
+SpacetimeDB client bindings remain under `src/module_bindings` and are included
+in the web build.
+
+## Domain
+
+Use Name.com DNS to point the production hostname to Vercel. Add the domain in
+Vercel first, then create exactly the DNS records Vercel requests. Keep
+SpacetimeDB and provider credentials outside Name.com and Vercel.

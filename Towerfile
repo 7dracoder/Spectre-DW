@@ -1,7 +1,7 @@
 [app]
 name = "specter"
-script = "./tower_pipeline.py"
-source = ["./tower_pipeline.py"]
+script = "./integrations/tower/investigation_complete.py"
+source = ["./integrations/tower/investigation_complete.py"]
 
 [[parameters]]
 name = "investigation_id"
